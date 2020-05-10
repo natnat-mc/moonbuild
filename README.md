@@ -34,6 +34,12 @@ If `name` is a glob, the target becomes a glob target.
 Glob targets can be used with name that matches them (with a limit of one glob target per name, and no ordering is specified).
 Glob targets will have their name substituted for their inputs, outputs and dependancies.
 
+### `-cmd [<args>...]`
+Prints and executes the command `cmd` with the given args. See `run` for how `args` works.
+
+### `#cmd [<args>...]`
+Executes without printing the command `cmd` with the given args. See `run` for how `args` works.
+
 ### `wildcard <wc>`
 Returns a table with all the matching files. Valid wildcards contain either `**`, which can be expanded by any characters, including '/', or `*`, which cannot be expanded by `/`. Wildcards can only contain one `**` or `*`.
 
