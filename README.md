@@ -11,7 +11,7 @@ It's fast, based on lua, and it's easy to write DSLs with it, so the build instr
 
 ## How do I install it?
 - First, you'll need Lua 5.2 (untested) or 5.3 and [LuaRocks](https://luarocks.org)
-- Then, you'll need `moonscript`, `argparse` and `luastatic`, which you can get from `luarocks`
+- Then, you'll need `moonscript`, `argparse`, `luafilesystem` and `luastatic`, which you can get from `luarocks`
 - Now, you can simply `make` Moonbuild, or build it with itself with `moon moonbuild.moon`
 - You're now ready to install it, with `sudo make install` or `sudo ./moonbuild install`
 
