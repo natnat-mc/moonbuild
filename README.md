@@ -20,10 +20,10 @@ First, you'll need a `Build.moon`, `Buildfile.moon`, `Build` or `Buildfile` in t
 Then, you'll need a few `target`s, and ideally a `default target` (or the default target will be `all`). `public target`s will be listed by `moonbuild -l`.
 To execute a command, you can use either `-cmd` or `#cmd` (the former will print it before executing it, the later won't).
 
-### `[default] [public] target <name> [deps: <deps>] [in: <inputs>] [out: <outputs>] [fn: <code>]`
+### `[default] [public] target <name> [deps: <deps>] [in: <inputs>] [out: <outputs>] [from: <from>] [fn: <code>]`
 Define a new target, and give it a list of depenancies, inputs, outputs and a function to run to build it.
 
-`deps`, `in` and `out` can be either strings or tables. `name` must be a string and `code` must be a function, that will be given a table with the following fields:
+`deps`, `in` and `out` can be either strings or tables. `from` acts like both `in` and `deps`. `name` must be a string and `code` must be a function, that will be given a table with the following fields:
 - `name`: the name of the target
 - `ins`: the table of inputs
 - `infile`: the first input

@@ -101,7 +101,13 @@ buildscope=
 		insert targets, target.name
 		target
 	target: (name, params) ->
-		BuildObject name, (flatten params.out), (flatten params.in), (flatten params.deps), params.fn
+		tout=flatten params.out
+		tin=flatten params.in
+		tdeps=flatten params.deps
+		for f in *flatten params.from
+			insert tin, f
+			insert tdeps, f
+		BuildObject name, tout, tin, tdeps, params.fn
 buildscope[k]=fn for k, fn in pairs util
 
 setmetatable buildscope,
