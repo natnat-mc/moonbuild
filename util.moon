@@ -88,7 +88,7 @@ wildcard= (pattern) ->
 		fd\close!
 		return found
 
-	directory, prefix, suffix=pattern\match '^([^/]*)/(.*)%*(.*)$'
+	directory, prefix, suffix=pattern\match '^(.*)/(.*)%*(.*)$'
 	if directory
 		found={}
 		for file in dir directory
