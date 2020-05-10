@@ -8,7 +8,7 @@ import truncate_traceback, rewrite_traceback from require 'moonscript.errors'
 import trim from require 'moonscript.util'
 
 util=require 'util'
-import exists, mtime, run, min, max, first, flatten from util
+import exists, mtime, run, min, max, first, flatten, match, patsubst from util
 
 import insert, concat from table
 
@@ -47,42 +47,76 @@ class Command
 -- represents a target
 class BuildObject
 	all={}
+	skip={}
+	cycle={}
+
+	@find: (name) =>
+		target=all[name]
+		return target if target
+		for glob, tgt in pairs all
+			return tgt if match name, glob
+		nil
+
 
 	@build: (name) =>
-		target=all[name] or error "No such target: #{name}"
-		target\build!
+		target=@find name or error "No such target: #{name}"
+		target\build name
+
+	__tostring: =>
+		"Target #{@name} (#{concat @deps, ', '})"
 
 	new: (@name, @outs={}, @ins={}, @deps={}, @fn= =>) =>
 		@skip=false
 		error "Duplicate build name #{@name}" if all[@name]
 		all[@name]=@
 
-	build: =>
-		return if @skip
-		error "Can't build #{@name}: cyclic dependancy" if @cycle
-		@cycle=true
-		for depname in *@deps
-			dep=all[depname] or error "Can't build #{@name}: missing dependancy #{depname}"
-			dep\build!
-		return unless @shouldbuild!
+	build: (name) =>
+		return if skip[name]
+		error "Can't build #{name}: cyclic depenancies found" if cycle[name]
+		cycle[name]=true
+		if @name!=name
+			@@build patsubst name, @name, dep for dep in *@deps
+		else
+			@@build dep for dep in *@deps
+		return unless @shouldbuild name
 
-		print "Building #{@name}"
+		ins=@ins
+		outs=@outs
+		if @name!=name
+			ins=[patsubst name, @name, elem for elem in *@ins]
+			outs=[patsubst name, @name, elem for elem in *@outs]
+			print "Building #{@name} as #{name}"
+		else
+			print "Building #{name}"
 		ok, err=pcall ->
-			@.fn ins: @ins, outs: @outs, infile: @ins[1], outfile: @outs[1], name: @name
+			@.fn
+				ins: ins
+				outs: outs
+				infile: ins[1]
+				outfile: outs[1]
+				name: name
 		error "Can't build #{@name}: lua error\n#{err}" unless ok
-		for f in *@outs
+		for f in *outs
 			error "Can't build #{@name}: output file #{f} not created" unless exists f
-		@skip=true
+		skip[name]=true
 
-	shouldbuild: =>
+	shouldbuild: (name) =>
 		return true if args.noskip
 		return true if #@ins==0 or #@outs==0
 
-		itimes=[mtime f for f in *@ins]
+		ins=if @name!=name
+			[patsubst name, @name, elem for elem in *@ins]
+		else
+			@ins
+		itimes=[mtime f for f in *ins]
 		for i=1, #@ins
 			error "Can't build #{@name}: missing inputs" unless itimes[i]
 
-		otimes=[mtime f for f in *@outs]
+		outs=if @name!=name
+			[patsubst name, @name, elem for elem in *@outs]
+		else
+			@outs
+		otimes=[mtime f for f in *outs]
 		for i=1, #@outs
 			return true if not otimes[i]
 

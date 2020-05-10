@@ -3,6 +3,8 @@ import attributes, dir from require 'lfs'
 import insert, concat from table
 unpack or=table.unpack
 
+GLOB_PATT='^([^%%]*)%%([^%%]*)$'
+
 -- min and max of table
 max= (t) ->
 	m=t[1]
@@ -109,14 +111,28 @@ wildcard= (pattern) ->
 -- string pattern
 patsubst= (str, pattern, replacement) ->
 	return [patsubst s, pattern, replacement for s in *str] if (type str)=='table'
-	prefix, suffix=pattern\match '^(.*)%%(.*)$'
-	error "Invalid pattern #{pattern}" unless prefix
-	reprefix, resuffix=replacement\match '^(.*)%%(.*)$'
-	error "Invalid replacement pattern #{pattern}" unless reprefix
+	prefix, suffix=pattern\match GLOB_PATT
+	return str unless prefix
+	reprefix, resuffix=replacement\match GLOB_PATT
+	return replacement unless reprefix
 
 	if (str\sub 1, #prefix)==prefix and (str\sub -#suffix)==suffix
 		return reprefix..(str\sub #prefix+1, -#suffix-1)..resuffix
 	str
+
+-- glob match
+match= (str, glob) ->
+	prefix, suffix=glob\match GLOB_PATT
+	return str==glob unless prefix
+	return str\sub #prefix+1, -#suffix-1 if (str\sub 1, #prefix)==prefix and (str\sub -#suffix)==suffix
+	false
+
+-- is a valid glob
+isglob= (glob) ->
+	return if glob\match GLOB_PATT
+		true
+	else
+		false
 
 env= (key, def) ->
 	(os.getenv key) or def
@@ -138,6 +154,6 @@ env= (key, def) ->
 	:run, :popen
 
 	-- string functions
-	:patsubst
+	:patsubst, :match, :isglob
 	:env
 }

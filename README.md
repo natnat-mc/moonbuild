@@ -30,6 +30,10 @@ Define a new target, and give it a list of depenancies, inputs, outputs and a fu
 - `outs`: the table of outputs
 - `outfile`: the first output
 
+If `name` is a glob, the target becomes a glob target.
+Glob targets can be used with name that matches them (with a limit of one glob target per name, and no ordering is specified).
+Glob targets will have their name substituted for their inputs, outputs and dependancies.
+
 ### `wildcard <wc>`
 Returns a table with all the matching files. Valid wildcards contain either `**`, which can be expanded by any characters, including '/', or `*`, which cannot be expanded by `/`. Wildcards can only contain one `**` or `*`.
 
