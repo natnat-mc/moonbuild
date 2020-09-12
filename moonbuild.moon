@@ -62,9 +62,9 @@ class BuildObject
 	@list: =>
 		{target, {dep, @find dep for dep in *target.deps} for name, target in pairs all}
 
-	@build: (name) =>
+	@build: (name, upper) =>
 		target=(@find name) or error "No such target: #{name}"
-		target\build name
+		target\build name, upper
 
 	__tostring: =>
 		"Target #{@name} (#{concat @deps, ', '})"
@@ -74,12 +74,14 @@ class BuildObject
 		error "Duplicate build name #{@name}" if all[@name]
 		all[@name]=@
 
-	build: (name) =>
+	build: (name, upper={}) =>
 		return if skip[name]
+		error "Cycle detected on #{@name}" if upper[@]
+		upper = setmetatable {[@]: true}, __index: upper
 		if @name!=name
-			@@build patsubst name, @name, dep for dep in *@deps
+			@@build (patsubst name, @name, dep), upper for dep in *@deps
 		else
-			@@build dep for dep in *@deps
+			@@build dep, upper for dep in *@deps
 		return unless @shouldbuild name
 
 		ins=@ins
