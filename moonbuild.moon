@@ -8,7 +8,7 @@ import truncate_traceback, rewrite_traceback from require 'moonscript.errors'
 import trim from require 'moonscript.util'
 
 util=require 'util'
-import exists, mtime, run, min, max, first, flatten, match, patsubst from util
+import exists, mtime, run, min, max, first, flatten, match, patsubst, sortedpairs from util
 
 import insert, concat from table
 
@@ -16,12 +16,15 @@ parser=argparse 'moonbuild'
 parser\argument('targets', "Targets to run")\args '*'
 parser\flag '-a --noskip', "Always run targets"
 parser\flag '-l --list', "List available targets"
+parser\flag '-d --deps', "List targets and their dependancies"
 args=parser\parse!
 
 -- util functions
 loadwithscope= (file, scope) ->
-	fn=loadfile file
-	dumped=string.dump fn
+	fn, err=loadfile file
+	error err or "failed to load code" unless fn
+	dumped, err=string.dump fn
+	error err or "failed to dump function" unless dumped
 	load dumped, file, 'b', scope
 pcall= (fn, ...) ->
 	rewrite=(err) ->
@@ -48,7 +51,6 @@ class Command
 class BuildObject
 	all={}
 	skip={}
-	cycle={}
 
 	@find: (name) =>
 		target=all[name]
@@ -57,9 +59,11 @@ class BuildObject
 			return tgt if match name, glob
 		nil
 
+	@list: =>
+		{target, {dep, @find dep for dep in *target.deps} for name, target in pairs all}
 
 	@build: (name) =>
-		target=@find name or error "No such target: #{name}"
+		target=(@find name) or error "No such target: #{name}"
 		target\build name
 
 	__tostring: =>
@@ -72,8 +76,6 @@ class BuildObject
 
 	build: (name) =>
 		return if skip[name]
-		error "Can't build #{name}: cyclic depenancies found" if cycle[name]
-		cycle[name]=true
 		if @name!=name
 			@@build patsubst name, @name, dep for dep in *@deps
 		else
@@ -153,6 +155,7 @@ setmetatable buildscope,
 file=first {'Build.moon', 'Buildfile.moon', 'Build', 'Buildfile'}, exists
 error "No Build.moon or Buildfile found" unless file
 buildfn=loadwithscope file, buildscope
+error "Failed to load build function" unless buildfn
 ok, err=pcall buildfn
 unless ok
 	if err
@@ -164,6 +167,25 @@ unless ok
 if args.list
 	io.write "Available targets:\n"
 	io.write "\t#{concat targets, ', '}\n"
+	os.exit 0
+
+if args.deps
+	io.write "Targets:\n"
+	for target, deps in sortedpairs BuildObject\list!, (a, b) -> a.name<b.name
+		io.write "\t#{target.name} "
+		if #target.ins==0
+			if #target.outs==0
+				io.write "[no in/out]"
+			else
+				io.write "[spontaneous generation]"
+		else
+			if #target.outs==0
+				io.write "[consumer]"
+			else
+				io.write "(#{concat target.ins, ', '} -> #{concat target.outs, ', '})"
+		io.write "\n"
+		for name, dep in sortedpairs deps
+			io.write "\t\t#{name} (#{dep.name})\n"
 	os.exit 0
 
 if #args.targets==0

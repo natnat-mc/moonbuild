@@ -1,6 +1,6 @@
 import attributes, dir from require 'lfs'
 
-import insert, concat from table
+import insert, concat, sort from table
 unpack or=table.unpack
 
 GLOB_PATT='^([^%%]*)%%([^%%]*)$'
@@ -65,7 +65,8 @@ escapecmdpart= (p) ->
 	'"'..p\gsub('\\', '\\\\')\gsub('"', '\\"')..'"'
 escapecmd= (c, args={}) ->
 	c=escapecmdpart c
-	c..=' '..escapecmdpart a for a in *args
+	for a in *flatten args
+		c..=' '..escapecmdpart a if a
 	c
 run= (c, args, params={}) ->
 	escaped=escapecmd c, args
@@ -120,6 +121,9 @@ patsubst= (str, pattern, replacement) ->
 		return reprefix..(str\sub #prefix+1, -#suffix-1)..resuffix
 	str
 
+splitsp= (str) ->
+	[elem for elem in str\gmatch '%S+']
+
 -- glob match
 match= (str, glob) ->
 	prefix, suffix=glob\match GLOB_PATT
@@ -137,14 +141,22 @@ isglob= (glob) ->
 env= (key, def) ->
 	(os.getenv key) or def
 
+sortedpairs= (table, cmp) ->
+	keys = [k for k in pairs table]
+	sort keys, cmp
+	coroutine.wrap ->
+		for key in *keys
+			coroutine.yield key, table[key]
+
 {
 	-- table functions
 	:min, :max
 	:foreach
 	:first
-	:insert, :unpack, :concat
+	:insert, :unpack, :concat, :sort
 	:exclude
 	:flatten
+	:sortedpairs
 
 	-- file functions
 	:wildcard
@@ -156,4 +168,5 @@ env= (key, def) ->
 	-- string functions
 	:patsubst, :match, :isglob
 	:env
+	:splitsp
 }
