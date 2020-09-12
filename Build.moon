@@ -24,7 +24,7 @@ public target 'info', fn: =>
 	#echo "Binary:", BINARY
 
 default target BINARY, out: {BINARY, OUT_C}, from: OUT_LUA, fn: =>
-	-luastatic MAIN_LUA, OUT_LUA, '-I/usr/include/lua5.3', '-llua5.3'
+	-luastatic MAIN_LUA, OUT_LUA, (findclib 'lua5.3', 'all')
 
 target '%.lua', in: '%.moon', out: '%.lua', fn: =>
 	-moonc @infile

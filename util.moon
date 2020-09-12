@@ -85,6 +85,12 @@ calccdeps= (infile, includesys=false) ->
 	rawdeps=data\gsub('\\\n', '')\match ':(.+)'
 	[dep for dep in rawdeps\gmatch '%S+' when dep!=infile]
 
+findclib= (name, mode='all') ->
+	args={name}
+	insert args, '--cflags' if mode=='all' or mode=='cc'
+	insert args, '--libs' if mode=='all' or mode=='ld'
+	[arg for arg in (popen 'pkg-config', args)\read('*a')\gmatch '%S+']
+
 -- file matcher
 wildcard= (pattern) ->
 	prefix, suffix=pattern\match '^(.*)%*%*(.*)$'
@@ -169,7 +175,7 @@ sortedpairs= (table, cmp) ->
 
 	-- command functions
 	:run, :popen
-	:calccdeps
+	:calccdeps, :findclib
 
 	-- string functions
 	:patsubst, :match, :isglob
