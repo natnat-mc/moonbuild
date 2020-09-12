@@ -43,7 +43,7 @@ flatten= (tab) ->
 	return {tab} if (type tab)!='table'
 	out={}
 	for e in *tab
-		if (type e)=='table' and e[1]
+		if (type e)=='table'
 			insert out, v for v in *flatten e
 		else
 			insert out, e
@@ -79,6 +79,11 @@ popen= (c, args, mode='r', params={}) ->
 	escaped=escapecmd c, args
 	print escaped if params.print
 	io.popen escaped, mode
+
+calccdeps= (infile, includesys=false) ->
+	data=(popen 'cc', {includesys and '-M' or '-MM', infile})\read '*a'
+	rawdeps=data\gsub('\\\n', '')\match ':(.+)'
+	[dep for dep in rawdeps\gmatch '%S+' when dep!=infile]
 
 -- file matcher
 wildcard= (pattern) ->
@@ -164,6 +169,7 @@ sortedpairs= (table, cmp) ->
 
 	-- command functions
 	:run, :popen
+	:calccdeps
 
 	-- string functions
 	:patsubst, :match, :isglob
