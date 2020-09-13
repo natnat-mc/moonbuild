@@ -812,7 +812,7 @@ do
           return true
         end
       end
-      return (max(itimes)) > (min(otimes))
+      return (max(itimes)) >= (min(otimes))
     end
   }
   _base_0.__index = _base_0

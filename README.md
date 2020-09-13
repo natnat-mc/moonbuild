@@ -10,7 +10,10 @@ Basically like `make`, but in [Moonscript](https://moonscript.org) and with expl
 It's fast, based on lua, and it's easy to write DSLs with it, so the build instructions can be readable. Also, it's a full programming language, so there are no arbitrary restrictions.
 
 ## How do I install it?
+Any of these will work
 - `luarocks install moonbuild` (probably as root)
+- `moon bin/moonbuild.moon install` (probably as root, in the cloned repo)
+- `alfons install` (probably as root, in the cloned repo, requires alfons)
 
 ## Now, how do I use it?
 First, you'll need a `Build.moon`, `Buildfile.moon`, `Build` or `Buildfile` in the root of your project.

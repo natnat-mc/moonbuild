@@ -124,7 +124,7 @@ class BuildObject
 		for i=1, #@outs
 			return true if not otimes[i]
 
-		(max itimes)>(min otimes)
+		(max itimes)>=(min otimes)
 
 error "Need Lua >=5.2" if setfenv
 
