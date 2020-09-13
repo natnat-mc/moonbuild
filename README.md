@@ -10,10 +10,7 @@ Basically like `make`, but in [Moonscript](https://moonscript.org) and with expl
 It's fast, based on lua, and it's easy to write DSLs with it, so the build instructions can be readable. Also, it's a full programming language, so there are no arbitrary restrictions.
 
 ## How do I install it?
-- First, you'll need Lua 5.2 (untested) or 5.3 and [LuaRocks](https://luarocks.org)
-- Then, you'll need `moonscript`, `argparse`, `luafilesystem` and `luastatic`, which you can get from `luarocks`
-- Now, you can simply `make` Moonbuild, or build it with itself with `moon moonbuild.moon`
-- You're now ready to install it, with `sudo make install` or `sudo ./moonbuild install`
+- `luarocks install moonbuild` (probably as root)
 
 ## Now, how do I use it?
 First, you'll need a `Build.moon`, `Buildfile.moon`, `Build` or `Buildfile` in the root of your project.
@@ -41,7 +38,7 @@ Prints and executes the command `cmd` with the given args. See `run` for how `ar
 Executes without printing the command `cmd` with the given args. See `run` for how `args` works.
 
 ### `wildcard <wc>`
-Returns a table with all the matching files. Valid wildcards contain either `**`, which can be expanded by any characters, including '/', or `*`, which cannot be expanded by `/`. Wildcards can only contain one `**` or `*`.
+Returns a table with all the matching files. Valid wildcards contain `**`, which can be expanded by any characters, including '/', and `*`, which cannot be expanded by `/`.
 
 `wc` must be a string
 
@@ -90,6 +87,12 @@ Returns `true` if the file exists, `false` otherwise.
 
 `file` must be a string
 
+
+### `isdir <file>`
+Returns `true` if the file exists and is a directory, `false` otherwise.
+
+`file` must be a string
+
 ### `run <cmd> [<args> [print: <print>] [error: <error>]]`
 Runs the given command with the given arguments. If `print` is truthy, prints the command before executing it, and if `error` is truthy, crashes if the command fails. Returns a boolean which is true if the command ended with success, and a number which is the return code.
 
@@ -97,6 +100,16 @@ Runs the given command with the given arguments. If `print` is truthy, prints th
 
 ### `popen <cmd> [<args> [print: <print>]]`
 Same as `run`, but returns a `io.popen` handle.
+
+### `calccdeps <infile> [includesys]`
+Computes the dependancies required to compile a C source file. Optionally include system libraries as sources.
+
+`infile` must be a string and `includesys` must be a boolean or `nil`
+
+### `findclib <lib> [what]`
+Finds the compiler or linker flags required to use a given C library.
+
+`lib` must be a string and `what` must be either `nil`, `'all'`, `'cc'` or `'ld'`
 
 ## License
 MIT
