@@ -1,53 +1,11 @@
 import wildcard, exists, isdir, mtime from require 'fsutil'
+import foreach, first, flatten, exclude, sortedpairs, min, max from require 'tableutil'
+import patsubst, splitsp from require 'stringutil'
 
-import insert, concat, sort from table
-unpack or=table.unpack
+import insert, concat, sort, pairs from require 'tableutil'
+import upper, lower from require 'stringutil'
 
 GLOB_PATT='^([^%%]*)%%([^%%]*)$'
-
--- min and max of table
-max= (t) ->
-	m=t[1]
-	for i=2, #t
-		v=t[i]
-		m=v if v>m
-	m
-min= (t) ->
-	m=t[1]
-	for i=2, #t
-		v=t[i]
-		m=v if v<m
-	m
-
--- simpler constructs
-foreach= (tab, fn) ->
-	[fn e for e in *tab]
-
-first= (tab, fn) ->
-	for e in *tab
-		return e if fn e
-
-exclude= (tab, ...) ->
-	i=1
-	while i<=#tab
-		removed=false
-		for j=1, select '#', ...
-			if tab[i]==select j, ...
-				table.remove tab, i
-				removed=true
-				break
-		i+=1 unless removed
-	tab
-
-flatten= (tab) ->
-	return {tab} if (type tab)!='table'
-	out={}
-	for e in *tab
-		if (type e)=='table'
-			insert out, v for v in *flatten e
-		else
-			insert out, e
-	out
 
 -- command functions
 escapecmdpart= (p) ->
@@ -84,21 +42,6 @@ findclib= (name, mode='all') ->
 	insert args, '--libs' if mode=='all' or mode=='ld'
 	[arg for arg in (popen 'pkg-config', args)\read('*a')\gmatch '%S+']
 
--- string pattern
-patsubst= (str, pattern, replacement) ->
-	return [patsubst s, pattern, replacement for s in *str] if (type str)=='table'
-	prefix, suffix=pattern\match GLOB_PATT
-	return str unless prefix
-	reprefix, resuffix=replacement\match GLOB_PATT
-	return replacement unless reprefix
-
-	if (str\sub 1, #prefix)==prefix and (str\sub -#suffix)==suffix
-		return reprefix..(str\sub #prefix+1, -#suffix-1)..resuffix
-	str
-
-splitsp= (str) ->
-	[elem for elem in str\gmatch '%S+']
-
 -- glob match
 match= (str, glob) ->
 	prefix, suffix=glob\match GLOB_PATT
@@ -113,25 +56,21 @@ isglob= (glob) ->
 	else
 		false
 
+-- getenv
 env= (key, def) ->
 	(os.getenv key) or def
 
-sortedpairs= (table, cmp) ->
-	keys = [k for k in pairs table]
-	sort keys, cmp
-	coroutine.wrap ->
-		for key in *keys
-			coroutine.yield key, table[key]
-
 {
-	-- table functions
+	-- table function
 	:min, :max
 	:foreach
 	:first
-	:insert, :unpack, :concat, :sort
 	:exclude
 	:flatten
 	:sortedpairs
+
+	:insert, :remove, :concat, :sort
+	:unpack
 
 	-- file functions
 	:wildcard
@@ -143,7 +82,14 @@ sortedpairs= (table, cmp) ->
 	:calccdeps, :findclib
 
 	-- string functions
-	:patsubst, :match, :isglob
-	:env
+	:patsubst
 	:splitsp
+
+	:upper, :lower
+
+	-- glob functions
+	:match, :isglob
+
+	-- env functions
+	:env
 }
