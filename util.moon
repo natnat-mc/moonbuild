@@ -1,4 +1,4 @@
-import attributes, dir from require 'lfs'
+import wildcard, exists, isdir, mtime from require 'fsutil'
 
 import insert, concat, sort from table
 unpack or=table.unpack
@@ -49,13 +49,6 @@ flatten= (tab) ->
 			insert out, e
 	out
 
--- file functions
-mtime= (f) ->
-	a=attributes f
-	a and a.modification
-exists= (f) ->
-	(attributes f)!=nil
-
 -- command functions
 escapecmdpart= (p) ->
 	if (type p)=='table'
@@ -90,35 +83,6 @@ findclib= (name, mode='all') ->
 	insert args, '--cflags' if mode=='all' or mode=='cc'
 	insert args, '--libs' if mode=='all' or mode=='ld'
 	[arg for arg in (popen 'pkg-config', args)\read('*a')\gmatch '%S+']
-
--- file matcher
-wildcard= (pattern) ->
-	prefix, suffix=pattern\match '^(.*)%*%*(.*)$'
-	if prefix
-		fd=popen 'find', {(raw: '*'), '-name', "*#{suffix}"}
-		found={}
-		for line in fd\lines!
-			insert found, line if (line\sub 1, #prefix)==prefix
-		fd\close!
-		return found
-
-	directory, prefix, suffix=pattern\match '^(.*)/(.*)%*(.*)$'
-	if directory
-		found={}
-		for file in dir directory
-			if (file\sub 1, #prefix)==prefix and (file\sub -#suffix)==suffix
-				insert found, "#{directory}/#{file}"
-		return found
-
-	prefix, suffix=pattern\match '^(.*)%*(.*)$'
-	if prefix
-		found={}
-		for file in dir '.'
-			if (file\sub 1, #prefix)==prefix and (file\sub -#suffix)==suffix
-				insert found, file
-		return found
-
-	error "Invalid wildcard pattern: #{pattern}"
 
 -- string pattern
 patsubst= (str, pattern, replacement) ->
@@ -171,7 +135,8 @@ sortedpairs= (table, cmp) ->
 
 	-- file functions
 	:wildcard
-	:mtime, :exists
+	:mtime
+	:exists, :isdir
 
 	-- command functions
 	:run, :popen
