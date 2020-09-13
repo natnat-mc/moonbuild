@@ -974,7 +974,11 @@ if args.deps then
     end
     io.write("\n")
     for name, dep in sortedpairs(deps) do
-      io.write("\t\t" .. tostring(name) .. " (" .. tostring(dep.name) .. ")\n")
+      io.write("\t\t" .. tostring(name))
+      if name ~= dep.name then
+        io.write(" (" .. tostring(dep.name) .. ")")
+      end
+      io.write("\n")
     end
   end
   os.exit(0)

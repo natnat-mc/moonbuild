@@ -188,7 +188,10 @@ if args.deps
 				io.write "(#{concat target.ins, ', '} -> #{concat target.outs, ', '})"
 		io.write "\n"
 		for name, dep in sortedpairs deps
-			io.write "\t\t#{name} (#{dep.name})\n"
+			io.write "\t\t#{name}"
+			if name!=dep.name
+				io.write " (#{dep.name})"
+			io.write "\n"
 	os.exit 0
 
 if #args.targets==0
