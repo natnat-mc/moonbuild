@@ -1,6 +1,6 @@
 tasks:
 	build: =>
-		sh "moon bin/moonbuild.moon compile-lua"
+		sh "moon bin/moonbuild.moon compile"
 	release: =>
 		error "no version provided" unless @v
 		tasks.build!

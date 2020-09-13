@@ -16,11 +16,6 @@ dependencies:
     - luafilesystem >= 1.7.0
 build:
     type: builtin
-    modules:
-        moonbuild.util: moonbuild/util.lua
-        moonbuild.fsutil: moonbuild/fsutil.lua
-        moonbuild.stringutil: moonbuild/stringutil.lua
-        moonbuild.tableutil: moonbuild/tableutil.lua
     install:
         bin:
-            moonbuild: bin/moonbuild.lua
+            moonbuild: moonbuild.lua

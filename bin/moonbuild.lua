@@ -349,7 +349,8 @@ local buildscope = {
       insert(tdeps, f)
     end
     return BuildObject(name, tout, tin, tdeps, params.fn)
-  end
+  end,
+  Command = Command
 }
 for k, fn in pairs(util) do
   buildscope[k] = fn

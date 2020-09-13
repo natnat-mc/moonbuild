@@ -146,6 +146,7 @@ buildscope=
 			insert tin, f
 			insert tdeps, f
 		BuildObject name, tout, tin, tdeps, params.fn
+	:Command
 buildscope[k]=fn for k, fn in pairs util
 
 setmetatable buildscope,
