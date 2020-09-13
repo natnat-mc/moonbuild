@@ -1,0 +1,26 @@
+package: moonbuild
+source:
+    url: git://github.com/natnat-mc/moonbuild
+description:
+    summary: Small build system in between make and a build.sh
+    detailed: >
+        moonbuild is a small build system that simplifies your
+        build definitions by allowing you to use declarative as
+        well as imperative rules.
+        It represents the build as a DAG with explicit ordering,
+        and doesn't give you any default confusing rules (unlike
+        make)
+homepage: https://github.com/natnat-mc/moonbuild
+dependencies:
+    - lua >= 5.3
+    - luafilesystem >= 1.7.0
+build:
+    type: builtin
+    modules:
+        moonbuild.util: moonbuild/util.lua
+        moonbuild.fsutil: moonbuild/fsutil.lua
+        moonbuild.stringutil: moonbuild/stringutil.lua
+        moonbuild.tableutil: moonbuild/tableutil.lua
+    install:
+        bin:
+            moonbuild: bin/moonbuild.lua

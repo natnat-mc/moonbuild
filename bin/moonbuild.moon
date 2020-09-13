@@ -7,7 +7,7 @@ import loadfile from require 'moonscript.base'
 import truncate_traceback, rewrite_traceback from require 'moonscript.errors'
 import trim from require 'moonscript.util'
 
-util=require 'util'
+util=require 'moonbuild.util'
 import exists, mtime, run, min, max, first, flatten, match, patsubst, sortedpairs from util
 
 import insert, concat from table
