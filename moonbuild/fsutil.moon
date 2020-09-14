@@ -1,25 +1,40 @@
-import dir, attributes from require 'lfs'
+import dir, attributes from require 'moonbuild.fscache'
 
 import gmatch, match, gsub, sub from string
-import insert, concat from table
+import insert, remove, concat from table
+
+normalizepath = (file) ->
+	parts = [part for part in gmatch file, '[^/]+']
+	absolute = (sub file, 1, 1)=='/'
+	for i=1, #parts
+		if parts[i]=='.'
+			remove parts, i
+			i -= 1
+			continue
+		if parts[i]=='..' and i!=1
+			remove parts, i
+			remove parts, i-1
+			i -= 2
+			continue
+	(absolute and '/' or '') .. concat parts, '/'
 
 ls = (d) ->
-	[f for f in dir d when f!='.' and f!='..']
+	[f for f in dir normalizepath d when f!='.' and f!='..']
 
 lswithpath = (d) ->
 	if d==''
 		return ls '.'
-	[d..'/'..f for f in dir d when f!='.' and f!='..']
+	[d..'/'..f for f in dir normalizepath d when f!='.' and f!='..']
 
 exists = (f) ->
-	(attributes f) != nil
+	(attributes normalizepath f) != nil
 
 isdir = (f) ->
-	a = attributes f
+	a = attributes normalizepath f
 	a and a.mode == 'directory' or false
 
 mtime = (f) ->
-	a = attributes f
+	a = attributes normalizepath f
 	a and a.modification
 
 matchglob = (str, glob) ->
@@ -81,8 +96,23 @@ wildcard = (glob) ->
 	else
 		return {}
 
+parentdir = (file) ->
+	normalizepath file..'/..'
+
+freezecache = (file) ->
+	dir.freeze file
+	dir.freeze parentdir file
+	attributes.invalidate file
+
+invalidatecache = (file) ->
+	dir.invalidate file
+	dir.invalidate parentdir file
+	attributes.invalidate file
+
 {
 	:wildcard
 	:exists, :isdir
 	:mtime
+	:normalizepath, :parentdir
+	:freezecache, :invalidatecache
 }

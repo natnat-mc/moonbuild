@@ -2,10 +2,69 @@ do
 
 do
 local _ENV = _ENV
+package.preload[ "moonbuild.fscache" ] = function( ... ) local arg = _G.arg;
+local attributes, dir
+do
+  local _obj_0 = require('lfs')
+  attributes, dir = _obj_0.attributes, _obj_0.dir
+end
+local unpack = unpack or table.unpack
+local FROZEN
+FROZEN = function() end
+local makecached
+makecached = function(fn)
+  local cache = { }
+  local invalidate
+  invalidate = function(val)
+    cache[val] = nil
+  end
+  local freeze
+  freeze = function(val)
+    cache[val] = FROZEN
+  end
+  local reset
+  reset = function()
+    cache = { }
+  end
+  local get
+  get = function(val)
+    local cached = cache[val]
+    if cached ~= FROZEN and cached ~= nil then
+      return unpack(cached)
+    end
+    local ret = {
+      fn(val)
+    }
+    if cached ~= FROZEN then
+      cache[val] = ret
+    end
+    return unpack(ret)
+  end
+  return setmetatable({
+    get = get,
+    invalidate = invalidate,
+    freeze = freeze,
+    reset = reset
+  }, {
+    __call = function(self, val)
+      return get(val)
+    end
+  })
+end
+return {
+  attributes = makecached(attributes),
+  dir = makecached(dir)
+}
+
+end
+end
+
+do
+local _ENV = _ENV
 package.preload[ "moonbuild.fsutil" ] = function( ... ) local arg = _G.arg;
 local dir, attributes
 do
-  local _obj_0 = require('lfs')
+  local _obj_0 = require('moonbuild.fscache')
   dir, attributes = _obj_0.dir, _obj_0.attributes
 end
 local gmatch, match, gsub, sub
@@ -13,16 +72,53 @@ do
   local _obj_0 = string
   gmatch, match, gsub, sub = _obj_0.gmatch, _obj_0.match, _obj_0.gsub, _obj_0.sub
 end
-local insert, concat
+local insert, remove, concat
 do
   local _obj_0 = table
-  insert, concat = _obj_0.insert, _obj_0.concat
+  insert, remove, concat = _obj_0.insert, _obj_0.remove, _obj_0.concat
+end
+local normalizepath
+normalizepath = function(file)
+  local parts
+  do
+    local _accum_0 = { }
+    local _len_0 = 1
+    for part in gmatch(file, '[^/]+') do
+      _accum_0[_len_0] = part
+      _len_0 = _len_0 + 1
+    end
+    parts = _accum_0
+  end
+  local absolute = (sub(file, 1, 1)) == '/'
+  for i = 1, #parts do
+    local _continue_0 = false
+    repeat
+      if parts[i] == '.' then
+        remove(parts, i)
+        i = i - 1
+        _continue_0 = true
+        break
+      end
+      if parts[i] == '..' and i ~= 1 then
+        remove(parts, i)
+        remove(parts, i - 1)
+        i = i - 2
+        _continue_0 = true
+        break
+      end
+      _continue_0 = true
+    until true
+    if not _continue_0 then
+      break
+    end
+  end
+  return (absolute and '/' or '') .. concat(parts, '/')
 end
 local ls
 ls = function(d)
   local _accum_0 = { }
   local _len_0 = 1
-  for f in dir(d) do
+  for f in dir(normalizepath(d)) do
     if f ~= '.' and f ~= '..' then
       _accum_0[_len_0] = f
       _len_0 = _len_0 + 1
@@ -37,7 +133,7 @@ lswithpath = function(d)
   end
   local _accum_0 = { }
   local _len_0 = 1
-  for f in dir(d) do
+  for f in dir(normalizepath(d)) do
     if f ~= '.' and f ~= '..' then
       _accum_0[_len_0] = d .. '/' .. f
       _len_0 = _len_0 + 1
@@ -47,16 +143,16 @@ lswithpath = function(d)
 end
 local exists
 exists = function(f)
-  return (attributes(f)) ~= nil
+  return (attributes(normalizepath(f))) ~= nil
 end
 local isdir
 isdir = function(f)
-  local a = attributes(f)
+  local a = attributes(normalizepath(f))
   return a and a.mode == 'directory' or false
 end
 local mtime
 mtime = function(f)
-  local a = attributes(f)
+  local a = attributes(normalizepath(f))
   return a and a.modification
 end
 local matchglob
@@ -152,11 +248,31 @@ wildcard = function(glob)
     return { }
   end
 end
+local parentdir
+parentdir = function(file)
+  return normalizepath(file .. '/..')
+end
+local freezecache
+freezecache = function(file)
+  dir.freeze(file)
+  dir.freeze(parentdir(file))
+  return attributes.invalidate(file)
+end
+local invalidatecache
+invalidatecache = function(file)
+  dir.invalidate(file)
+  dir.invalidate(parentdir(file))
+  return attributes.invalidate(file)
+end
 return {
   wildcard = wildcard,
   exists = exists,
   isdir = isdir,
-  mtime = mtime
+  mtime = mtime,
+  normalizepath = normalizepath,
+  parentdir = parentdir,
+  freezecache = freezecache,
+  invalidatecache = invalidatecache
 }
 
 end
@@ -570,6 +686,11 @@ end
 local trim
 trim = require('moonscript.util').trim
 local util = require('moonbuild.util')
+local freezecache, invalidatecache
+do
+  local _obj_0 = require('moonbuild.fsutil')
+  freezecache, invalidatecache = _obj_0.freezecache, _obj_0.invalidatecache
+end
 local exists, mtime, run, min, max, first, flatten, match, patsubst, sortedpairs
 exists, mtime, run, min, max, first, flatten, match, patsubst, sortedpairs = util.exists, util.mtime, util.run, util.min, util.max, util.first, util.flatten, util.match, util.patsubst, util.sortedpairs
 local insert, concat
@@ -602,7 +723,7 @@ pcall = function(fn, ...)
   rewrite = function(err)
     local trace = debug.traceback('', 2)
     local trunc = truncate_traceback(trim(trace))
-    return rewrite_traceback(trunc, err)
+    return (rewrite_traceback(trunc, err)) or trace
   end
   return xpcall(fn, rewrite, ...)
 end
@@ -721,6 +842,10 @@ do
       else
         print("Building " .. tostring(name))
       end
+      for _index_0 = 1, #outs do
+        local file = outs[_index_0]
+        freezecache(file)
+      end
       local ok, err = pcall(function()
         return self.fn({
           ins = ins,
@@ -730,6 +855,10 @@ do
           name = name
         })
       end)
+      for _index_0 = 1, #outs do
+        local file = outs[_index_0]
+        invalidatecache(file)
+      end
       if not (ok) then
         error("Can't build " .. tostring(self.name) .. ": lua error\n" .. tostring(err))
       end
