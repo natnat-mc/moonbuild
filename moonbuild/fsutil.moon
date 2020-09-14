@@ -19,12 +19,11 @@ normalizepath = (file) ->
 	(absolute and '/' or '') .. concat parts, '/'
 
 ls = (d) ->
-	[f for f in dir normalizepath d when f!='.' and f!='..']
+	[f for f in *dir normalizepath d when f!='.' and f!='..']
 
 lswithpath = (d) ->
-	if d==''
-		return ls '.'
-	[d..'/'..f for f in dir normalizepath d when f!='.' and f!='..']
+	return ls '.' if d==''
+	[d..'/'..f for f in *dir normalizepath d when f!='.' and f!='..']
 
 exists = (f) ->
 	(attributes normalizepath f) != nil
@@ -109,10 +108,14 @@ invalidatecache = (file) ->
 	dir.invalidate parentdir file
 	attributes.invalidate file
 
+clearcache = ->
+	dir.clear!
+	attributes.clear!
+
 {
 	:wildcard
 	:exists, :isdir
 	:mtime
 	:normalizepath, :parentdir
-	:freezecache, :invalidatecache
+	:freezecache, :invalidatecache, :clearcache
 }

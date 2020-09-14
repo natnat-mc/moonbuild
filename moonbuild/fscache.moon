@@ -12,7 +12,7 @@ makecached = (fn) ->
 	freeze = (val) ->
 		cache[val] = FROZEN
 
-	reset = ->
+	clear = ->
 		cache = {}
 
 	get = (val) ->
@@ -24,10 +24,10 @@ makecached = (fn) ->
 			cache[val] = ret
 		unpack ret
 
-	setmetatable { :get, :invalidate, :freeze, :reset },
+	setmetatable { :get, :invalidate, :freeze, :clear },
 		__call: (val) => get val
 
 {
 	attributes: makecached attributes
-	dir: makecached dir
+	dir: makecached (file) -> [k for k in dir file]
 }

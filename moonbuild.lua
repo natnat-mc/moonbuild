@@ -22,8 +22,8 @@ makecached = function(fn)
   freeze = function(val)
     cache[val] = FROZEN
   end
-  local reset
-  reset = function()
+  local clear
+  clear = function()
     cache = { }
   end
   local get
@@ -44,7 +44,7 @@ makecached = function(fn)
     get = get,
     invalidate = invalidate,
     freeze = freeze,
-    reset = reset
+    clear = clear
   }, {
     __call = function(self, val)
       return get(val)
@@ -53,7 +53,15 @@ makecached = function(fn)
 end
 return {
   attributes = makecached(attributes),
-  dir = makecached(dir)
+  dir = makecached(function(file)
+    local _accum_0 = { }
+    local _len_0 = 1
+    for k in dir(file) do
+      _accum_0[_len_0] = k
+      _len_0 = _len_0 + 1
+    end
+    return _accum_0
+  end)
 }
 
 end
@@ -118,7 +126,9 @@ local ls
 ls = function(d)
   local _accum_0 = { }
   local _len_0 = 1
-  for f in dir(normalizepath(d)) do
+  local _list_0 = dir(normalizepath(d))
+  for _index_0 = 1, #_list_0 do
+    local f = _list_0[_index_0]
     if f ~= '.' and f ~= '..' then
       _accum_0[_len_0] = f
       _len_0 = _len_0 + 1
@@ -133,7 +143,9 @@ lswithpath = function(d)
   end
   local _accum_0 = { }
   local _len_0 = 1
-  for f in dir(normalizepath(d)) do
+  local _list_0 = dir(normalizepath(d))
+  for _index_0 = 1, #_list_0 do
+    local f = _list_0[_index_0]
     if f ~= '.' and f ~= '..' then
       _accum_0[_len_0] = d .. '/' .. f
       _len_0 = _len_0 + 1
@@ -264,6 +276,11 @@ invalidatecache = function(file)
   dir.invalidate(parentdir(file))
   return attributes.invalidate(file)
 end
+local clearcache
+clearcache = function()
+  dir.clear()
+  return attributes.clear()
+end
 return {
   wildcard = wildcard,
   exists = exists,
@@ -272,7 +289,8 @@ return {
   normalizepath = normalizepath,
   parentdir = parentdir,
   freezecache = freezecache,
-  invalidatecache = invalidatecache
+  invalidatecache = invalidatecache,
+  clearcache = clearcache
 }
 
 end
