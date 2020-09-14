@@ -23,6 +23,7 @@ public target 'install', from: OUT_AMALG, out: '/usr/local/bin/moonbuild', fn: =
 		dfd\write line, '\n'
 	ifd\close!
 	dfd\close!
+	-chmod '+x', @outfile
 	#echo "Installed at:", @outfile
 
 default target OUT_AMALG, from: {BINARY_LUA, OUT_LUA}, out: OUT_AMALG, fn: =>
