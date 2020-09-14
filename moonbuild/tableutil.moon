@@ -12,7 +12,7 @@ min = (table, cmp=(a, b) -> a<b) ->
 	val = table[1]
 	for i=2, #table
 		elem = table[i]
-		if cmp val, elem
+		if cmp elem, val
 			val = elem
 	val
 
@@ -20,7 +20,7 @@ max = (table, cmp=(a, b) -> a<b) ->
 	val = table[1]
 	for i=2, #table
 		elem = table[i]
-		if not cmp val, elem
+		if not cmp elem, val
 			val = elem
 	val
 

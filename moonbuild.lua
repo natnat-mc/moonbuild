@@ -394,7 +394,7 @@ min = function(table, cmp)
   local val = table[1]
   for i = 2, #table do
     local elem = table[i]
-    if cmp(val, elem) then
+    if cmp(elem, val) then
       val = elem
     end
   end
@@ -410,7 +410,7 @@ max = function(table, cmp)
   local val = table[1]
   for i = 2, #table do
     local elem = table[i]
-    if not cmp(val, elem) then
+    if not cmp(elem, val) then
       val = elem
     end
   end
@@ -959,7 +959,7 @@ do
           return true
         end
       end
-      return (max(itimes)) >= (min(otimes))
+      return (max(itimes)) > (min(otimes))
     end
   }
   _base_0.__index = _base_0
@@ -1034,8 +1034,7 @@ end
 if setfenv then
   error("Need Lua >=5.2")
 end
-local targets = { }
-local defaulttarget = 'all'
+local targets, defaulttarget
 local buildscope = {
   default = function(target)
     defaulttarget = target.name
@@ -1073,23 +1072,40 @@ setmetatable(buildscope, {
     end
   end
 })
-local file = first({
-  'Build.moon',
-  'Buildfile.moon',
-  'Build',
-  'Buildfile'
-}, exists)
-if not (file) then
-  error("No Build.moon or Buildfile found")
+local loadtargets
+loadtargets = function()
+  targets = { }
+  defaulttarget = 'all'
+  local file = first({
+    'Build.moon',
+    'Buildfile.moon',
+    'Build',
+    'Buildfile'
+  }, exists)
+  if not (file) then
+    error("No Build.moon or Buildfile found")
+  end
+  local buildfn = loadwithscope(file, buildscope)
+  if not (buildfn) then
+    error("Failed to load build function")
+  end
+  return buildfn()
 end
-local buildfn = loadwithscope(file, buildscope)
-if not (buildfn) then
-  error("Failed to load build function")
+local buildtargets
+buildtargets = function()
+  if #args.targets == 0 then
+    BuildObject:build(defaulttarget)
+  end
+  local _list_0 = args.targets
+  for _index_0 = 1, #_list_0 do
+    local target = _list_0[_index_0]
+    BuildObject:build(target)
+  end
 end
-local ok, err = pcall(buildfn)
+local ok, err = pcall(loadtargets)
 if not (ok) then
   if err then
-    io.stderr:write(err, '\n')
+    io.stderr:write("Error while loading build file: ", err, '\n')
   else
     io.stderr:write("Unknown error\n")
   end
@@ -1130,11 +1146,4 @@ if args.deps then
   end
   os.exit(0)
 end
-if #args.targets == 0 then
-  BuildObject:build(defaulttarget)
-end
-local _list_0 = args.targets
-for _index_0 = 1, #_list_0 do
-  local target = _list_0[_index_0]
-  BuildObject:build(target)
-end
+return buildtargets()

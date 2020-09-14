@@ -127,12 +127,11 @@ class BuildObject
 		for i=1, #@outs
 			return true if not otimes[i]
 
-		(max itimes)>=(min otimes)
+		(max itimes)>(min otimes)
 
 error "Need Lua >=5.2" if setfenv
 
-targets = {}
-defaulttarget = 'all'
+local targets, defaulttarget
 
 buildscope =
 	default: (target) ->
@@ -158,14 +157,25 @@ setmetatable buildscope,
 		return global if global
 		(...) -> Command k, ...
 
-file = first {'Build.moon', 'Buildfile.moon', 'Build', 'Buildfile'}, exists
-error "No Build.moon or Buildfile found" unless file
-buildfn = loadwithscope file, buildscope
-error "Failed to load build function" unless buildfn
-ok, err = pcall buildfn
+loadtargets = ->
+	targets = {}
+	defaulttarget = 'all'
+	file = first {'Build.moon', 'Buildfile.moon', 'Build', 'Buildfile'}, exists
+	error "No Build.moon or Buildfile found" unless file
+	buildfn = loadwithscope file, buildscope
+	error "Failed to load build function" unless buildfn
+	buildfn!
+
+buildtargets = ->
+	if #args.targets==0
+		BuildObject\build defaulttarget
+	for target in *args.targets
+		BuildObject\build target
+
+ok, err = pcall loadtargets
 unless ok
 	if err
-		io.stderr\write err, '\n'
+		io.stderr\write "Error while loading build file: ", err, '\n'
 	else
 		io.stderr\write "Unknown error\n"
 	os.exit 1
@@ -197,7 +207,4 @@ if args.deps
 			io.write "\n"
 	os.exit 0
 
-if #args.targets==0
-	BuildObject\build defaulttarget
-for target in *args.targets
-	BuildObject\build target
+buildtargets!
