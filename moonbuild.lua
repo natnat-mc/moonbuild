@@ -120,7 +120,11 @@ normalizepath = function(file)
       break
     end
   end
-  return (absolute and '/' or '') .. concat(parts, '/')
+  if #parts == 0 then
+    return '.'
+  else
+    return (absolute and '/' or '') .. concat(parts, '/')
+  end
 end
 local ls
 ls = function(d)
@@ -201,7 +205,7 @@ wildcard = function(glob)
   local absolute = (sub(glob, 1, 1)) == '/'
   for i, part in ipairs(parts) do
     local prevpath = (absolute and '/' or '') .. concat(parts, '/', 1, i - 1)
-    local currpath = prevpath .. '/' .. part
+    local currpath = (i == 1 and '' or (prevpath .. '/')) .. part
     if match(part, '%*%*.*%*%*') then
       error("Two '**' in the same path component in a wildcard")
     end
