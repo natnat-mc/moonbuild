@@ -16,7 +16,10 @@ normalizepath = (file) ->
 			remove parts, i-1
 			i -= 2
 			continue
-	(absolute and '/' or '') .. concat parts, '/'
+	if #parts==0
+		'.'
+	else
+		(absolute and '/' or '') .. concat parts, '/'
 
 ls = (d) ->
 	[f for f in *dir normalizepath d when f!='.' and f!='..']
@@ -54,7 +57,7 @@ wildcard = (glob) ->
 
 	for i, part in ipairs parts
 		prevpath = (absolute and '/' or '') .. concat parts, '/', 1, i-1
-		currpath = prevpath .. '/' .. part
+		currpath = (i==1 and '' or (prevpath .. '/')) .. part
 
 		if match part, '%*%*.*%*%*'
 			error "Two '**' in the same path component in a wildcard"
