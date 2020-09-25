@@ -370,16 +370,26 @@ patsubst = function(str, pattern, replacement)
     end
     return _accum_0
   end
+  if str == pattern then
+    return replacement
+  end
   local prefix, suffix = match(pattern, GLOB_PATT)
-  if not (prefix) then
+  if not (prefix or suffix) then
     return str
   end
   local reprefix, resuffix = match(replacement, GLOB_PATT)
-  if not (reprefix) then
-    return replacement
+  if not (reprefix or resuffix) then
+    if (#prefix == 0 or (sub(str, 1, #prefix)) == prefix) and (#suffix == 0 or (sub(str, -#suffix)) == suffix) then
+      return replacement
+    else
+      return str
+    end
   end
-  if (sub(str, 1, #prefix)) == prefix and (sub(str, -#suffix)) == suffix then
-    return reprefix .. (sub(str, #prefix + 1, -#suffix - 1)) .. resuffix
+  if #prefix == 0 or (sub(str, 1, #prefix)) == prefix then
+    str = reprefix .. (sub(str, #prefix + 1))
+  end
+  if #suffix == 0 or (sub(str, -#suffix)) == suffix then
+    str = (sub(str, 1, -#suffix - 1)) .. resuffix
   end
   return str
 end
@@ -513,10 +523,14 @@ flatten = function(tab)
   for _index_0 = 1, #tab do
     local e = tab[_index_0]
     if (type(e)) == 'table' then
-      local _list_0 = flatten(e)
-      for _index_1 = 1, #_list_0 do
-        local v = _list_0[_index_1]
-        insert(out, v)
+      if e[1] == nil and (next(e)) ~= nil then
+        insert(out, e)
+      else
+        local _list_0 = flatten(e)
+        for _index_1 = 1, #_list_0 do
+          local v = _list_0[_index_1]
+          insert(out, v)
+        end
       end
     else
       insert(out, e)
