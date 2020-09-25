@@ -16,6 +16,8 @@ makecached = (fn) ->
 		cache = {}
 
 	get = (val) ->
+		if cache == FROZEN
+			return fn val
 		cached = cache[val]
 		if cached!=FROZEN and cached!=nil
 			return unpack cached
@@ -24,10 +26,27 @@ makecached = (fn) ->
 			cache[val] = ret
 		unpack ret
 
-	setmetatable { :get, :invalidate, :freeze, :clear },
+	enable = ->
+		cache = {} if cache==FROZEN
+
+	disable = ->
+		cache = FROZEN
+
+	setmetatable { :get, :invalidate, :freeze, :clear, :enable, :disable },
 		__call: (val) => get val
 
-{
+cached = {
 	attributes: makecached attributes
 	dir: makecached (file) -> [k for k in dir file]
 }
+
+enable = ->
+	fn\enable! for _, fn in cached
+
+disable = ->
+	fn\disable! for _, fn in cached
+
+clear = ->
+	fn\clear! for _, fn in cached
+
+setmetatable { :enable, :disable, :clear }, __index: cached

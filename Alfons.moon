@@ -1,6 +1,8 @@
 tasks:
 	build: =>
 		sh "moon bin/moonbuild.moon compile"
+	test: =>
+		sh "busted"
 	install: =>
 		sh "moon bin/moonbuild.moon install"
 	release: =>

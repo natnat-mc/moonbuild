@@ -48,7 +48,10 @@ flatten = (tab) ->
 	out = {}
 	for e in *tab
 		if (type e)=='table'
-			insert out, v for v in *flatten e
+			if e[1] == nil and (next e)!=nil
+				insert out, e
+			else
+				insert out, v for v in *flatten e
 		else
 			insert out, e
 	out

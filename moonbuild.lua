@@ -28,6 +28,9 @@ makecached = function(fn)
   end
   local get
   get = function(val)
+    if cache == FROZEN then
+      return fn(val)
+    end
     local cached = cache[val]
     if cached ~= FROZEN and cached ~= nil then
       return unpack(cached)
@@ -40,18 +43,30 @@ makecached = function(fn)
     end
     return unpack(ret)
   end
+  local enable
+  enable = function()
+    if cache == FROZEN then
+      cache = { }
+    end
+  end
+  local disable
+  disable = function()
+    cache = FROZEN
+  end
   return setmetatable({
     get = get,
     invalidate = invalidate,
     freeze = freeze,
-    clear = clear
+    clear = clear,
+    enable = enable,
+    disable = disable
   }, {
     __call = function(self, val)
       return get(val)
     end
   })
 end
-return {
+local cached = {
   attributes = makecached(attributes),
   dir = makecached(function(file)
     local _accum_0 = { }
@@ -63,6 +78,31 @@ return {
     return _accum_0
   end)
 }
+local enable
+enable = function()
+  for _, fn in cached do
+    fn:enable()
+  end
+end
+local disable
+disable = function()
+  for _, fn in cached do
+    fn:disable()
+  end
+end
+local clear
+clear = function()
+  for _, fn in cached do
+    fn:clear()
+  end
+end
+return setmetatable({
+  enable = enable,
+  disable = disable,
+  clear = clear
+}, {
+  __index = cached
+})
 
 end
 end
@@ -70,10 +110,10 @@ end
 do
 local _ENV = _ENV
 package.preload[ "moonbuild.fsutil" ] = function( ... ) local arg = _G.arg;
-local dir, attributes
+local dir, attributes, clear, enable, disable
 do
   local _obj_0 = require('moonbuild.fscache')
-  dir, attributes = _obj_0.dir, _obj_0.attributes
+  dir, attributes, clear, enable, disable = _obj_0.dir, _obj_0.attributes, _obj_0.clear, _obj_0.enable, _obj_0.disable
 end
 local gmatch, match, gsub, sub
 do
@@ -98,22 +138,23 @@ normalizepath = function(file)
     parts = _accum_0
   end
   local absolute = (sub(file, 1, 1)) == '/'
-  for i = 1, #parts do
+  local i = 1
+  while i <= #parts do
     local _continue_0 = false
     repeat
       if parts[i] == '.' then
         remove(parts, i)
+        _continue_0 = true
+        break
+      end
+      if parts[i] == '..' and i ~= 1 and parts[i - 1] ~= '..' then
+        remove(parts, i)
+        remove(parts, i - 1)
         i = i - 1
         _continue_0 = true
         break
       end
-      if parts[i] == '..' and i ~= 1 then
-        remove(parts, i)
-        remove(parts, i - 1)
-        i = i - 2
-        _continue_0 = true
-        break
-      end
+      i = i + 1
       _continue_0 = true
     until true
     if not _continue_0 then
@@ -121,7 +162,7 @@ normalizepath = function(file)
     end
   end
   if #parts == 0 then
-    return '.'
+    return absolute and '/' or '.'
   else
     return (absolute and '/' or '') .. concat(parts, '/')
   end
@@ -173,7 +214,12 @@ mtime = function(f)
 end
 local matchglob
 matchglob = function(str, glob)
-  local patt = '^' .. (gsub((gsub(glob, '%*%*', '.*')), '%*', '[^/]*')) .. '$'
+  glob = gsub(glob, '[%[%]%%+.?-]', function(self)
+    return '%' .. self
+  end)
+  local patt = '^' .. (gsub(glob, '%*%*?', function(self)
+    return self == '**' and '.*' or '[^/]*'
+  end)) .. '$'
   local rst
   if (type(str)) == 'table' then
     local results, i = { }, 1
@@ -280,11 +326,6 @@ invalidatecache = function(file)
   dir.invalidate(parentdir(file))
   return attributes.invalidate(file)
 end
-local clearcache
-clearcache = function()
-  dir.clear()
-  return attributes.clear()
-end
 return {
   wildcard = wildcard,
   exists = exists,
@@ -292,9 +333,12 @@ return {
   mtime = mtime,
   normalizepath = normalizepath,
   parentdir = parentdir,
+  matchglob = matchglob,
   freezecache = freezecache,
   invalidatecache = invalidatecache,
-  clearcache = clearcache
+  clearcache = clear,
+  enablecache = enable,
+  disablecache = disable
 }
 
 end
