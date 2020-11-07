@@ -1,2 +1,2 @@
-/moonbuild/*.lua
-/bin/*.lua
+*.lua
+/out/*

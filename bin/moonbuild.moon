@@ -1,210 +1,88 @@
-#!/usr/bin/env moon
-
-argparse = require 'argparse'
-
-require 'moonscript'
+-- load everything we need
 import loadfile from require 'moonscript.base'
-import truncate_traceback, rewrite_traceback from require 'moonscript.errors'
-import trim from require 'moonscript.util'
+Context = require 'moonbuild.context'
+Variable = require 'moonbuild.core.Variable'
+DepGraph = require 'moonbuild.core.DAG'
+import parseargs from require 'moonbuild._cmd.common'
+import sort, concat from table
+import exit from os
 
-util = require 'moonbuild.util'
-import freezecache, invalidatecache from require 'moonbuild.fsutil'
-import exists, mtime, run, min, max, first, flatten, match, patsubst, sortedpairs from util
+-- parse the arguments
+argparse = require 'argparse'
+parser = with argparse "moonbuild", "A build system in moonscript"
+	\option '-b --buildfile', "Build file to use", 'Build.moon'
+	\option '-j --parallel', "Sets the number of parallel tasks, 'y' to run as many as we have cores", '1'
+	\flag '-l --list', "List the targets", false
+	\flag '-V --list-variables', "List the variables", false
+	\flag '-q --quiet', "Don't print targets as they are being built", false
+	\flag '-f --force', "Always rebuild every target", false
+	\flag '-v --verbose', "Be verbose", false
+	(\option '-u --unset', "Unsets a variable")\count '*'
+	(\option '-s --set', "Sets a variable")\args(2)\count '*'
+	(\option '-S --set-list', "Sets a variable to a list")\args(2)\count '*'
+	(\argument 'targets', "Targets to build")\args '*'
+	\add_complete!
 
-import insert, concat from table
-
-parser = argparse 'moonbuild'
-parser\argument('targets', "Targets to run")\args '*'
-parser\flag '-a --noskip', "Always run targets"
-parser\flag '-l --list', "List available targets"
-parser\flag '-d --deps', "List targets and their dependancies"
 args = parser\parse!
 
--- util functions
-loadwithscope = (file, scope) ->
-	fn, err = loadfile file
-	error err or "failed to load code" unless fn
-	dumped, err = string.dump fn
-	error err or "failed to dump function" unless dumped
-	load dumped, file, 'b', scope
-pcall = (fn, ...) ->
-	rewrite = (err) ->
-		trace = debug.traceback '', 2
-		trunc = truncate_traceback trim trace
-		(rewrite_traceback trunc, err) or trace
-	xpcall fn, rewrite, ...
+overrides = {}
+for unset in *args.unset
+	overrides[unset] = Variable.NIL
+for set in *args.set
+	overrides[set[1]] = set[2]
+for set in *args.set_list
+	overrides[set[1]] = parseargs set[2]
 
--- command object
--- represents a command that can be called
-class Command
-	new: (@cmd, ...) =>
-		@args = {...}
+args.parallel = args.parallel == 'y' and 'y' or ((tonumber args.parallel) or error "Invalid argument for -j: #{args.parallel}")
+error "Invalid argument for -j: #{args.parallel}" if args.parallel != 'y' and (args.parallel<1 or args.parallel%1 != 0)
+print "Parsed CLI args" if args.verbose
 
-	__unm: => @run error: true, print: true
-	__len: => @run error: true
-	__tostring: => @cmd
+-- load the buildfile
+ctx = Context!
+ctx\load (loadfile args.buildfile), overrides
+print "Loaded buildfile" if args.verbose
 
-	run: (params) => run @cmd, @args, params
-	@run: (...) => -@ ...
-
--- build object
--- represents a target
-class BuildObject
-	all = {}
-	skip = {}
-
-	@find: (name) =>
-		target = all[name]
-		return target if target
-		for glob, tgt in pairs all
-			return tgt if match name, glob
-		nil
-
-	@list: =>
-		{target, {dep, @find dep for dep in *target.deps} for name, target in pairs all}
-
-	@build: (name, upper) =>
-		target = (@find name) or error "No such target: #{name}"
-		target\build name, upper
-
-	__tostring: =>
-		"Target #{@name} (#{concat @deps, ', '})"
-
-	new: (@name, @outs={}, @ins={}, @deps={}, @fn= =>) =>
-		@skip = false
-		error "Duplicate build name #{@name}" if all[@name]
-		all[@name] = @
-
-	build: (name, upper={}) =>
-		return if skip[name]
-		error "Cycle detected on #{@name}" if upper[@]
-		upper = setmetatable {[@]: true}, __index: upper
-		if @name!=name
-			@@build (patsubst name, @name, dep), upper for dep in *@deps
-		else
-			@@build dep, upper for dep in *@deps
-		return unless @shouldbuild name
-
-		ins = @ins
-		outs = @outs
-		if @name!=name
-			ins = [patsubst name, @name, elem for elem in *@ins]
-			outs = [patsubst name, @name, elem for elem in *@outs]
-			print "Building #{@name} as #{name}"
-		else
-			print "Building #{name}"
-		freezecache file for file in *outs
-		ok, err = pcall ->
-			@.fn
-				ins: ins
-				outs: outs
-				infile: ins[1]
-				outfile: outs[1]
-				name: name
-		invalidatecache file for file in *outs
-		error "Can't build #{@name}: lua error\n#{err}" unless ok
-		for f in *outs
-			error "Can't build #{@name}: output file #{f} not created" unless exists f
-		skip[name] = true
-
-	shouldbuild: (name) =>
-		return true if args.noskip
-		return true if #@ins==0 or #@outs==0
-
-		ins = if @name!=name
-			[patsubst name, @name, elem for elem in *@ins]
-		else
-			@ins
-		itimes = [mtime f for f in *ins]
-		for i=1, #@ins
-			error "Can't build #{@name}: missing inputs" unless itimes[i]
-
-		outs = if @name!=name
-			[patsubst name, @name, elem for elem in *@outs]
-		else
-			@outs
-		otimes = [mtime f for f in *outs]
-		for i=1, #@outs
-			return true if not otimes[i]
-
-		(max itimes)>(min otimes)
-
-error "Need Lua >=5.2" if setfenv
-
-local targets, defaulttarget
-
-buildscope =
-	default: (target) ->
-		defaulttarget=target.name
-		target
-	public: (target) ->
-		insert targets, target.name
-		target
-	target: (name, params) ->
-		tout = flatten params.out
-		tin = flatten params.in
-		tdeps = flatten params.deps
-		for f in *flatten params.from
-			insert tin, f
-			insert tdeps, f
-		BuildObject name, tout, tin, tdeps, params.fn
-	:Command
-buildscope[k] = fn for k, fn in pairs util
-
-setmetatable buildscope,
-	__index: (k) =>
-		global = rawget _G, k
-		return global if global
-		(...) -> Command k, ...
-
-loadtargets = ->
-	targets = {}
-	defaulttarget = 'all'
-	file = first {'Build.moon', 'Buildfile.moon', 'Build', 'Buildfile'}, exists
-	error "No Build.moon or Buildfile found" unless file
-	buildfn = loadwithscope file, buildscope
-	error "Failed to load build function" unless buildfn
-	buildfn!
-
-buildtargets = ->
-	if #args.targets==0
-		BuildObject\build defaulttarget
-	for target in *args.targets
-		BuildObject\build target
-
-ok, err = pcall loadtargets
-unless ok
-	if err
-		io.stderr\write "Error while loading build file: ", err, '\n'
-	else
-		io.stderr\write "Unknown error\n"
-	os.exit 1
-
+-- handle -l and -V
 if args.list
-	io.write "Available targets:\n"
-	io.write "\t#{concat targets, ', '}\n"
-	os.exit 0
+	print "Public targets"
+	targets, n = {}, 1
+	for t in *ctx.targets
+		if t.public
+			targets[n], n = t.name, n+1
+	sort targets
+	print concat targets, ", "
+	print!
+	exit 0 unless args.list_variables
+if args.list_variables
+	print "Public variables"
+	vars, n = {}, 1
+	for k, v in pairs ctx.variables
+		if v.public
+			vars[n], n = k, n+1
+	sort vars
+	print concat vars, ", "
+	print!
+	exit 0
 
-if args.deps
-	io.write "Targets:\n"
-	for target, deps in sortedpairs BuildObject\list!, (a, b) -> a.name<b.name
-		io.write "\t#{target.name} "
-		if #target.ins==0
-			if #target.outs==0
-				io.write "[no in/out]"
-			else
-				io.write "[spontaneous generation]"
-		else
-			if #target.outs==0
-				io.write "[consumer]"
-			else
-				io.write "(#{concat target.ins, ', '} -> #{concat target.outs, ', '})"
-		io.write "\n"
-		for name, dep in sortedpairs deps
-			io.write "\t\t#{name}"
-			if name!=dep.name
-				io.write " (#{dep.name})"
-			io.write "\n"
-	os.exit 0
+-- initialize the buildfile further
+ctx\init!
+print "Initialized buildfile" if args.verbose
 
-buildtargets!
+-- create the DAG
+targets = #args.targets==0 and ctx.defaulttargets or args.targets
+dag = DepGraph ctx, targets
+print "Created dependancy graph" if args.verbose
+
+-- execute the build
+if args.parallel==1
+	Executor = require 'moonbuild.core.singleprocessexecutor'
+	executor = Executor dag, args.parallel
+	executor\execute args
+else
+	ok, Executor = pcall -> require 'moonbuild.core.multiprocessexecutor'
+	Executor = require 'moonbuild.core.singleprocessexecutor' unless ok
+	nparallel = args.parallel == 'y' and Executor\getmaxparallel! or args.parallel
+	print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}" if args.verbose
+	executor = Executor dag, nparallel
+	executor\execute args
+print "Finished" if args.verbose

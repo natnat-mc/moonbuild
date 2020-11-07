@@ -1,34 +1,46 @@
-SOURCES_MOON = wildcard 'moonbuild/**.moon'
-BINARY       = 'bin/moonbuild.moon'
-OUT_LUA      = patsubst SOURCES_MOON, '%.moon', '%.lua'
-BINARY_LUA   = patsubst BINARY, '%.moon', '%.lua'
-OUT_AMALG    = 'moonbuild.lua'
+public var 'MOONC', 'moonc'
+public var 'AMALG', 'amalg.lua'
+public var 'RM', 'rm', '-f', '--'
+public var 'LUA', 'lua5.3'
 
-public target 'clean', fn: =>
-	-rm '-f', OUT_LUA, BINARY_LUA
+var 'LIB_SRC', _.wildcard 'moonbuild/**.moon'
+var 'BIN_SRC', _.wildcard 'bin/*.moon'
 
-public target 'info', fn: =>
-	#echo "Moonscript sources:", SOURCES_MOON
-	#echo "Compiled lua:", OUT_LUA
+var 'LIB_LUA', _.patsubst LIB_SRC, '%.moon', '%.lua'
+var 'BIN_LUA', _.patsubst BIN_SRC, '%.moon', '%.lua'
+var 'BIN', _.patsubst BIN_LUA, 'bin/%.lua', 'out/%'
 
-public target 'compile', deps: OUT_AMALG
+var 'MODULES', _.foreach (_.patsubst LIB_LUA, '%.lua', '%'), => @gsub '/', '.'
 
-public target 'install', from: OUT_AMALG, out: '/usr/local/bin/moonbuild', fn: =>
-	dfd, err = io.open @outfile, 'w'
-	error err unless dfd
-	ifd, err = io.open @infile, 'r'
-	error err unless ifd
-	dfd\write '#!/usr/bin/env lua5.3\n'
-	for line in ifd\lines!
-		dfd\write line, '\n'
-	ifd\close!
-	dfd\close!
-	-chmod '+x', @outfile
-	#echo "Installed at:", @outfile
+with public default target 'all'
+	\after 'bin'
+	\after 'lib'
 
-default target OUT_AMALG, from: {BINARY_LUA, OUT_LUA}, out: OUT_AMALG, fn: =>
-	modules = foreach (patsubst OUT_LUA, '%.lua', '%'), => @gsub '/', '.'
-	-Command 'amalg.lua', '-o', @outfile, '-s', 'bin/moonbuild.lua', modules
+with public target 'clean'
+	\fn => _.cmd RM, LIB_LUA
+	\fn => _.cmd RM, BIN_LUA
 
-target '%.lua', in: '%.moon', out: '%.lua', fn: =>
-	-moonc @infile
+with public target 'mrproper'
+	\after 'clean'
+	\fn => _.cmd RM, BIN
+
+with public target 'bin'
+	\depends BIN
+
+with public target 'lib'
+	\depends LIB_LUA
+
+with target BIN, pattern: 'out/%'
+	\depends 'bin/%.lua'
+	\depends LIB_LUA
+	\produces 'out/%'
+	\mkdirs!
+	\fn =>
+		_.cmd AMALG, '-o', @outfile, '-s', @infile, MODULES
+		_.writefile @outfile, "#!/usr/bin/env #{LUA}\n#{_.readfile @outfile}"
+		_.cmd 'chmod', '+x', @outfile
+
+with target {LIB_LUA, BIN_LUA}, pattern: '%.lua'
+	\depends '%.moon'
+	\produces '%.lua'
+	\fn => _.moonc @infile, @outfile
