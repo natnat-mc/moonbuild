@@ -1,6 +1,7 @@
 tasks:
 	build: =>
-		sh "moon bin/moonbuild.moon -jy"
+		load 'moonbuild'
+		tasks.moonbuild j: true
 	release: =>
 		error "no version provided" unless @v
 		tasks.build!
