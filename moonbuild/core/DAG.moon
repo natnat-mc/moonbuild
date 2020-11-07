@@ -1,4 +1,4 @@
-import filter, foreach, flatten, patsubst from require 'moonbuild._common'
+import first, filter, foreach, flatten, patsubst from require 'moonbuild._common'
 import runwithcontext from require 'moonbuild.compat.ctx'
 globalenv = require 'moonbuild.env.global'
 import exists, parent, mkdirs, clearentry, disableentry, attributes from require 'moonbuild._fs'
@@ -64,7 +64,7 @@ class DepGraph
 		nodes = foreach candidates, (candidate) -> a: {pcall -> DepNode @, candidate, name}
 		resolved = foreach (filter nodes, (node) -> node.a[1]), (node) -> node.a[2]
 		sort resolved, nodepriority
-		resolved[1] or error "Cannot resolve target #{name}"
+		resolved[1] or error "Cannot resolve target #{name}: #{#candidates} candidates, #{#resolved} resolved"
 
 	buildablenodes: =>
 		[v for k, v in pairs @nodes when v\canbuild! and not v.built]
@@ -87,16 +87,24 @@ class DepNode
 			ctx = setmetatable {},
 				__index: (_, k) ->
 					switch k
-						when 'infile' then first deps
-						when 'infiles' then flatten deps
-						when 'outfile' then first @outs
-						when 'outfiles' then flatten @outs
-						when 'name' then @name
-						else error "No such field in TargetDepsContext: #{k}"
+						when 'infile'
+							f = first deps
+							f and f.name
+						when 'infiles'
+							foreach deps, => @name
+						when 'outfile'
+							f = first @outs
+							f and f.name
+						when 'outfiles'
+							foreach @outs, => @name
+						when 'name'
+							@name
+						else
+							error "No such field in TargetDepsContext: #{k}"
 				__newindex: (k) =>
 					error "Attempt to set field #{k} of TargetDepsContext"
 			for depfn in *target.depfunctions
-				deps = flatten deps, foreach depfn, (fn) -> resolve runwithcontext fn, @dag.env, ctx
+				deps = flatten deps, foreach (runwithcontext depfn, @dag.env, ctx), resolve
 		@ins = foreach deps, (dep) -> dep.name
 		@after = foreach after, (dep) -> dep.name
 		@deps = flatten { deps, after }

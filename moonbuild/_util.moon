@@ -14,8 +14,8 @@ _cdeps = (cc, cflags, path) ->
 	rawlist = gsub (match raw, ':(.+)'), '\\\n', ' '
 	[v for v in gmatch rawlist, '%S+']
 cdeps = setmetatable {},
-	__index: (cc) => (cflags, path) -> _cdeps cc, cflags, path
-	__call: (cflags, path) => _cdeps 'cc', cflags, path
+	__index: (cc) => (path, cflags) -> _cdeps cc, cflags, path
+	__call: (path, cflags) => _cdeps 'cc', cflags, path
 
 readfile = (filename) ->
 	fd, err = open filename, 'rb'

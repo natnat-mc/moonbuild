@@ -1272,11 +1272,11 @@ _cdeps = function(cc, cflags, path)
 end
 local cdeps = setmetatable({ }, {
   __index = function(self, cc)
-    return function(cflags, path)
+    return function(path, cflags)
       return _cdeps(cc, cflags, path)
     end
   end,
-  __call = function(self, cflags, path)
+  __call = function(self, path, cflags)
     return _cdeps('cc', cflags, path)
   end
 })
@@ -1646,10 +1646,10 @@ end
 do
 local _ENV = _ENV
 package.preload[ "moonbuild.core.DAG" ] = function( ... ) local arg = _G.arg;
-local filter, foreach, flatten, patsubst
+local first, filter, foreach, flatten, patsubst
 do
   local _obj_0 = require('moonbuild._common')
-  filter, foreach, flatten, patsubst = _obj_0.filter, _obj_0.foreach, _obj_0.flatten, _obj_0.patsubst
+  first, filter, foreach, flatten, patsubst = _obj_0.first, _obj_0.filter, _obj_0.foreach, _obj_0.flatten, _obj_0.patsubst
 end
 local runwithcontext
 runwithcontext = require('moonbuild.compat.ctx').runwithcontext
@@ -1753,7 +1753,7 @@ do
         return node.a[2]
       end)
       sort(resolved, nodepriority)
-      return resolved[1] or error("Cannot resolve target " .. tostring(name))
+      return resolved[1] or error("Cannot resolve target " .. tostring(name) .. ": " .. tostring(#candidates) .. " candidates, " .. tostring(#resolved) .. " resolved")
     end,
     buildablenodes = function(self)
       local _accum_0 = { }
@@ -1936,13 +1936,19 @@ do
           __index = function(_, k)
             local _exp_0 = k
             if 'infile' == _exp_0 then
-              return first(deps)
+              local f = first(deps)
+              return f and f.name
             elseif 'infiles' == _exp_0 then
-              return flatten(deps)
+              return foreach(deps, function(self)
+                return self.name
+              end)
             elseif 'outfile' == _exp_0 then
-              return first(self.outs)
+              local f = first(self.outs)
+              return f and f.name
             elseif 'outfiles' == _exp_0 then
-              return flatten(self.outs)
+              return foreach(self.outs, function(self)
+                return self.name
+              end)
             elseif 'name' == _exp_0 then
               return self.name
             else
@@ -1956,9 +1962,7 @@ do
         local _list_0 = target.depfunctions
         for _index_0 = 1, #_list_0 do
           local depfn = _list_0[_index_0]
-          deps = flatten(deps, foreach(depfn, function(fn)
-            return resolve(runwithcontext(fn, self.dag.env, ctx))
-          end))
+          deps = flatten(deps, foreach((runwithcontext(depfn, self.dag.env, ctx)), resolve))
         end
       end
       self.ins = foreach(deps, function(dep)
