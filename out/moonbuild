@@ -1670,6 +1670,8 @@ nodepriority = function(a, b)
   local tb = type(b.name)
   local da = #a.deps
   local db = #b.deps
+  local sa = a.sync
+  local sb = b.sync
   if ta == 'string' and tb ~= 'string' then
     return true
   elseif ta ~= 'string' and tb == 'string' then
@@ -1678,6 +1680,10 @@ nodepriority = function(a, b)
     return true
   elseif a.priority < b.priority then
     return false
+  elseif sa and not sb then
+    return false
+  elseif sb and not sa then
+    return true
   else
     return da < db
   end
@@ -2248,6 +2254,15 @@ do
       end
     end,
     addprocess = function(self, node, opts)
+      if node.sync then
+        while self.nprocesses ~= 0 do
+          local _ = self.waitprocess
+        end
+        node:build(opts)
+        node.built = true
+        node:updatecache()
+        return 
+      end
       local pid = fork()
       if not (pid) then
         error("Failed to fork")

@@ -37,6 +37,14 @@ class Executor
 			error "Node #{name} wasn't built" unless node.built
 
 	addprocess: (node, opts) =>
+		if node.sync
+			while @nprocesses != 0
+				@waitprocess
+			node\build opts
+			node.built = true
+			node\updatecache!
+			return
+
 		pid = fork!
 		error "Failed to fork" unless pid
 		if pid!=0

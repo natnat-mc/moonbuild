@@ -12,6 +12,8 @@ nodepriority = (a, b) ->
 	tb = type b.name
 	da = #a.deps
 	db = #b.deps
+	sa = a.sync
+	sb = b.sync
 	if ta=='string' and tb!='string'
 		return true
 	elseif ta!='string' and tb=='string'
@@ -20,6 +22,10 @@ nodepriority = (a, b) ->
 		return true
 	elseif a.priority < b.priority
 		return false
+	elseif sa and not sb
+		return false
+	elseif sb and not sa
+		return true
 	else
 		return da < db
 
