@@ -16,6 +16,9 @@ MODULES = $(shell echo $(foreach lib, $(LIB_LUA), $(patsubst %.lua, %, $(lib))) 
 
 all: bin lib
 
+install: all
+	sudo cp out/moonbuild /usr/local/bin/moonbuild
+
 clean:
 	$(RM) $(LIB_LUA)
 	$(RM) $(BIN_LUA)

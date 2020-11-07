@@ -16,6 +16,11 @@ with public default target 'all'
 	\after 'bin'
 	\after 'lib'
 
+with public target 'install'
+	\depends 'out/moonbuild'
+	\produces '/usr/local/bin/moonbuild'
+	\fn => _.cmd 'sudo', 'cp', @infile, @outfile
+
 with public target 'clean'
 	\fn => _.cmd RM, LIB_LUA
 	\fn => _.cmd RM, BIN_LUA
