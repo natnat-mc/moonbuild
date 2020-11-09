@@ -1695,6 +1695,9 @@ transclosure = function(obj, prop)
   local set = { }
   local imp
   imp = function(e)
+    if not (e[prop]) then
+      return 
+    end
     local _list_0 = e[prop]
     for _index_0 = 1, #_list_0 do
       local v = _list_0[_index_0]

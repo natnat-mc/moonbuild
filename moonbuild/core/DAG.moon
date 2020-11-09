@@ -34,6 +34,7 @@ transclosure = (obj, prop) ->
 	i = 1
 	set = {}
 	imp = (e) ->
+		return unless e[prop]
 		for v in *e[prop]
 			if not set[v]
 				elems[i], i = v, i+1
