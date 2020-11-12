@@ -123,7 +123,7 @@ class DepNode
 				return false
 		for file in *@ins
 			if not exists file
-				error "Node #{name} has ran all of its parents, but can't run since #{file} doesn't exist"
+				error "Node #{@name} has ran all of its parents, but can't run since #{file} doesn't exist. Did you mean to use after instead of depends?"
 		return true
 
 	build: (opts={}) =>

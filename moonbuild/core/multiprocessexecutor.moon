@@ -39,7 +39,7 @@ class Executor
 	addprocess: (node, opts) =>
 		if node.sync
 			while @nprocesses != 0
-				@waitprocess
+				@waitprocess!
 			node\build opts
 			node.built = true
 			node\updatecache!

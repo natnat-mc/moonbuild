@@ -1821,7 +1821,7 @@ do
       for _index_0 = 1, #_list_1 do
         local file = _list_1[_index_0]
         if not exists(file) then
-          error("Node " .. tostring(name) .. " has ran all of its parents, but can't run since " .. tostring(file) .. " doesn't exist")
+          error("Node " .. tostring(self.name) .. " has ran all of its parents, but can't run since " .. tostring(file) .. " doesn't exist. Did you mean to use after instead of depends?")
         end
       end
       return true
@@ -2259,7 +2259,7 @@ do
     addprocess = function(self, node, opts)
       if node.sync then
         while self.nprocesses ~= 0 do
-          local _ = self.waitprocess
+          self:waitprocess()
         end
         node:build(opts)
         node.built = true
