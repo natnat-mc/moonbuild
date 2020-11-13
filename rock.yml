@@ -22,3 +22,5 @@ build:
     install:
         bin:
             moonbuild: out/moonbuild
+        modules:
+            moonbuild: out/moonbuild.lua

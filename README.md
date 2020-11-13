@@ -24,11 +24,8 @@ You will need `argparse` and `moonscript` installed from luarocks, and `luaposix
 
 ### Bootstrapping
 You can build moonbuild with itself: `moon bin/moonbuild.moon -qjy`.  
-This will leave the binary ready to be used as `out/moonbuild`.
-
-### Using make
-You can also build moonbuild with make: `make`.
-This will leave the binary ready to be used as `out/moonbuild`.
+This will leave the binary ready to be used as `out/moonbuild`.  
+The binary and library can then be installed with `bin/moonbuild install`.
 
 ## Docs
 TODO

@@ -3,6 +3,7 @@ import loadfile from require 'moonscript.base'
 Context = require 'moonbuild.context'
 Variable = require 'moonbuild.core.Variable'
 DepGraph = require 'moonbuild.core.DAG'
+Executor = require 'moonbuild.core.executor'
 import parseargs from require 'moonbuild._cmd.common'
 import sort, concat from table
 import exit from os
@@ -74,15 +75,8 @@ dag = DepGraph ctx, targets
 print "Created dependancy graph" if args.verbose
 
 -- execute the build
-if args.parallel==1
-	Executor = require 'moonbuild.core.singleprocessexecutor'
-	executor = Executor dag, args.parallel
-	executor\execute args
-else
-	ok, Executor = pcall -> require 'moonbuild.core.multiprocessexecutor'
-	Executor = require 'moonbuild.core.singleprocessexecutor' unless ok
-	nparallel = args.parallel == 'y' and Executor\getmaxparallel! or args.parallel
-	print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}" if args.verbose
-	executor = Executor dag, nparallel
-	executor\execute args
+nparallel = args.parallel == 'y' and Executor\getmaxparallel! or args.parallel
+print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}" if args.verbose
+executor = Executor dag, nparallel
+executor\execute args
 print "Finished" if args.verbose

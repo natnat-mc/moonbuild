@@ -1,3 +1,4 @@
+SingleProcessExecutor = require 'moonbuild.core.singleprocessexecutor'
 import fork, _exit from require 'posix.unistd'
 import wait from require 'posix.sys.wait'
 import open, stderr from io
@@ -17,8 +18,12 @@ class Executor
 		@processes = {}
 		@nprocesses = 0
 		@building = {}
+		@nbuilt = 0
 
 	execute: (opts) =>
+		if @nparallel == 1
+			return (SingleProcessExecutor @dag, 1)\execute opts
+
 		block = @dag\buildablenodes!
 		while #block != 0
 			for node in *block
@@ -36,6 +41,12 @@ class Executor
 		for name, node in pairs @dag.nodes
 			error "Node #{name} wasn't built" unless node.built
 
+		unless opts.quiet
+			if @nbuilt == 0
+				print "Nothing to be done"
+			else
+				print "Built #{@nbuilt} targets"
+
 	addprocess: (node, opts) =>
 		if node.sync
 			while @nprocesses != 0
@@ -52,18 +63,20 @@ class Executor
 			@nprocesses += 1
 			@building[node] = true
 		else
-			ok, err = pcall -> node\build opts
+			ok, status = pcall -> node\build opts
 			if ok
+				_exit status and 0 or 2
 				_exit 0
 			else
-				stderr\write err
+				stderr\write status
 				_exit 1
 
 	waitprocess: =>
 		pid, ty, status = wait!
 		error "Failed to wait" unless pid
-		error "Failed to build #{@processes[pid].name}" if ty != 'exited' or status != 0
+		error "Failed to build #{@processes[pid].name}" if ty != 'exited' or status != 0 and status != 2
 		@processes[pid].built = true
 		@processes[pid]\updatecache!
 		@processes[pid] = nil
 		@nprocesses -= 1
+		@nbuilt += 1 if status == 0

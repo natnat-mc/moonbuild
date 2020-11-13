@@ -155,6 +155,7 @@ common.includes = includes
 common.patget = patget
 common.patset = patset
 common.patsubst = patsubst
+common.exclude = exclude
 common.min = min
 common.max = max
 common.minmax = minmax

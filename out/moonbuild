@@ -636,6 +636,7 @@ common.includes = includes
 common.patget = patget
 common.patset = patset
 common.patsubst = patsubst
+common.exclude = exclude
 common.min = min
 common.max = max
 common.minmax = minmax
@@ -1646,10 +1647,10 @@ end
 do
 local _ENV = _ENV
 package.preload[ "moonbuild.core.DAG" ] = function( ... ) local arg = _G.arg;
-local first, filter, foreach, flatten, patsubst
+local first, filter, foreach, flatten, patsubst, includes
 do
   local _obj_0 = require('moonbuild._common')
-  first, filter, foreach, flatten, patsubst = _obj_0.first, _obj_0.filter, _obj_0.foreach, _obj_0.flatten, _obj_0.patsubst
+  first, filter, foreach, flatten, patsubst, includes = _obj_0.first, _obj_0.filter, _obj_0.foreach, _obj_0.flatten, _obj_0.patsubst, _obj_0.includes
 end
 local runwithcontext
 runwithcontext = require('moonbuild.compat.ctx').runwithcontext
@@ -1659,8 +1660,11 @@ do
   local _obj_0 = require('moonbuild._fs')
   exists, parent, mkdirs, clearentry, disableentry, attributes = _obj_0.exists, _obj_0.parent, _obj_0.mkdirs, _obj_0.clearentry, _obj_0.disableentry, _obj_0.attributes
 end
-local sort
-sort = table.sort
+local sort, insert, remove
+do
+  local _obj_0 = table
+  sort, insert, remove = _obj_0.sort, _obj_0.insert, _obj_0.remove
+end
 local huge
 huge = math.huge
 local DepNode, FileTarget
@@ -1774,6 +1778,47 @@ do
         end
       end
       return _accum_0
+    end,
+    reset = function(self)
+      for k, n in pairs(self.nodes) do
+        n.built = false
+      end
+    end,
+    resetchildren = function(self, names)
+      local done = { }
+      local stack
+      do
+        local _accum_0 = { }
+        local _len_0 = 1
+        for _index_0 = 1, #names do
+          local v = names[_index_0]
+          _accum_0[_len_0] = v
+          _len_0 = _len_0 + 1
+        end
+        stack = _accum_0
+      end
+      while #stack ~= 0 do
+        local _continue_0 = false
+        repeat
+          local name = remove(stack)
+          if done[name] then
+            _continue_0 = true
+            break
+          end
+          done[name] = true
+          local node = self.nodes[name]
+          node.built = false
+          local _list_0 = (node:children())
+          for _index_0 = 1, #_list_0 do
+            local n = _list_0[_index_0]
+            insert(stack, n)
+          end
+          _continue_0 = true
+        until true
+        if not _continue_0 then
+          break
+        end
+      end
     end
   }
   _base_0.__index = _base_0
@@ -1806,6 +1851,17 @@ end
 do
   local _class_0
   local _base_0 = {
+    children = function(self)
+      local _accum_0 = { }
+      local _len_0 = 1
+      for k, n in pairs(self.dag.nodes) do
+        if (includes(n.ins, self.name)) or (includes(n.after, self.name)) then
+          _accum_0[_len_0] = k
+          _len_0 = _len_0 + 1
+        end
+      end
+      return _accum_0
+    end,
     canbuild = function(self)
       local _list_0 = flatten({
         self.ins,
@@ -1832,16 +1888,17 @@ do
       end
       local force = opts.force or false
       local quiet = opts.quiet or false
-      if self.built then
-        return 
+      if self.built or #self.buildfunctions == 0 then
+        return false
       end
       if not (force or self:shouldbuild()) then
-        return 
+        return false
       end
-      if not (quiet or #self.buildfunctions == 0) then
+      if not (quiet) then
         print(tostring(self.type == 'virtual' and "Running" or "Building") .. " " .. tostring(self.name))
       end
-      return self:actuallybuild()
+      self:actuallybuild()
+      return true
     end,
     shouldbuild = function(self)
       if #self.outs == 0 or #self.ins == 0 or self.type == 'virtual' then
@@ -2188,7 +2245,18 @@ end
 
 do
 local _ENV = _ENV
+package.preload[ "moonbuild.core.executor" ] = function( ... ) local arg = _G.arg;
+local ok, MultiProcessExecutor = pcall(function()
+  return require('moonbuild.core.multiprocessexecutor')
+end)
+return ok and MultiProcessExecutor or require('moonbuild.core.singleprocessexecutor')
+end
+end
+
+do
+local _ENV = _ENV
 package.preload[ "moonbuild.core.multiprocessexecutor" ] = function( ... ) local arg = _G.arg;
+local SingleProcessExecutor = require('moonbuild.core.singleprocessexecutor')
 local fork, _exit
 do
   local _obj_0 = require('posix.unistd')
@@ -2208,6 +2276,9 @@ do
   local _class_0
   local _base_0 = {
     execute = function(self, opts)
+      if self.nparallel == 1 then
+        return (SingleProcessExecutor(self.dag, 1)):execute(opts)
+      end
       local block = self.dag:buildablenodes()
       while #block ~= 0 do
         for _index_0 = 1, #block do
@@ -2255,6 +2326,13 @@ do
           error("Node " .. tostring(name) .. " wasn't built")
         end
       end
+      if not (opts.quiet) then
+        if self.nbuilt == 0 then
+          return print("Nothing to be done")
+        else
+          return print("Built " .. tostring(self.nbuilt) .. " targets")
+        end
+      end
     end,
     addprocess = function(self, node, opts)
       if node.sync then
@@ -2275,13 +2353,14 @@ do
         self.nprocesses = self.nprocesses + 1
         self.building[node] = true
       else
-        local ok, err = pcall(function()
+        local ok, status = pcall(function()
           return node:build(opts)
         end)
         if ok then
+          _exit(status and 0 or 2)
           return _exit(0)
         else
-          stderr:write(err)
+          stderr:write(status)
           return _exit(1)
         end
       end
@@ -2291,13 +2370,16 @@ do
       if not (pid) then
         error("Failed to wait")
       end
-      if ty ~= 'exited' or status ~= 0 then
+      if ty ~= 'exited' or status ~= 0 and status ~= 2 then
         error("Failed to build " .. tostring(self.processes[pid].name))
       end
       self.processes[pid].built = true
       self.processes[pid]:updatecache()
       self.processes[pid] = nil
       self.nprocesses = self.nprocesses - 1
+      if status == 0 then
+        self.nbuilt = self.nbuilt + 1
+      end
     end
   }
   _base_0.__index = _base_0
@@ -2307,6 +2389,7 @@ do
       self.processes = { }
       self.nprocesses = 0
       self.building = { }
+      self.nbuilt = 0
     end,
     __base = _base_0,
     __name = "Executor"
@@ -2348,11 +2431,14 @@ do
   local _class_0
   local _base_0 = {
     execute = function(self, opts)
+      local nbuilt = 0
       local block = self.dag:buildablenodes()
       while #block ~= 0 do
         for _index_0 = 1, #block do
           local node = block[_index_0]
-          node:build(opts)
+          if node:build(opts) then
+            nbuilt = nbuilt + 1
+          end
           node:updatecache()
           node.built = true
         end
@@ -2361,6 +2447,13 @@ do
       for name, node in pairs(self.dag.nodes) do
         if not (node.built) then
           error("Node " .. tostring(name) .. " wasn't built")
+        end
+      end
+      if not (opts.quiet) then
+        if nbuilt == 0 then
+          return print("Nothing to be done")
+        else
+          return print("Built " .. tostring(nbuilt) .. " targets")
         end
       end
     end
@@ -2498,6 +2591,92 @@ end
 end
 end
 
+do
+local _ENV = _ENV
+package.preload[ "moonbuild.init" ] = function( ... ) local arg = _G.arg;
+local loadfile
+loadfile = require('moonscript.base').loadfile
+local Context = require('moonbuild.context')
+local DepGraph = require('moonbuild.core.DAG')
+local Executor = require('moonbuild.core.executor')
+local _ = require('moonbuild._')
+local insert
+insert = table.insert
+local moonbuild
+moonbuild = function(...)
+  local opts = { }
+  for i = 1, select('#', ...) do
+    local arg = select(i, ...)
+    if (type(arg)) == 'string' then
+      insert(opts, arg)
+    elseif (type(arg)) == 'table' then
+      for k, v in pairs(arg) do
+        if (type(k)) ~= 'number' then
+          opts[k] = v
+        end
+      end
+      for i, v in ipairs(arg) do
+        insert(opts, v)
+      end
+    else
+      error("Invalid argument type " .. tostring(type(arg)) .. " for moonbuild")
+    end
+  end
+  local buildfile = opts.buildfile or opts.b or 'Build.moon'
+  opts.buildfile = buildfile
+  local parallel = opts.parallel or opts.j or 1
+  if parallel == 'y' then
+    parallel = true
+  end
+  opts.parallel = parallel
+  local quiet = opts.quiet or opts.q or false
+  opts.quiet = quiet
+  local force = opts.force or opts.f or false
+  opts.force = force
+  local verbose = opts.verbose or opts.v or false
+  opts.verbose = verbose
+  local ctx = Context()
+  ctx:load((loadfile(buildfile)), opts)
+  if verbose then
+    print("Loaded buildfile")
+  end
+  ctx:init()
+  if verbose then
+    print("Initialized buildfile")
+  end
+  local targets = #opts == 0 and ctx.defaulttargets or opts
+  local dag = DepGraph(ctx, targets)
+  if verbose then
+    print("Created dependancy graph")
+  end
+  local nparallel = parallel == true and Executor:getmaxparallel() or parallel
+  if verbose then
+    print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
+  end
+  local executor = Executor(dag, nparallel)
+  executor:execute(opts)
+  if verbose then
+    return print("Finished")
+  end
+end
+local table = {
+  moonbuild = moonbuild,
+  _ = _,
+  Context = Context,
+  DepGraph = DepGraph,
+  Executor = Executor
+}
+return setmetatable(table, {
+  __call = function(self, ...)
+    return moonbuild(...)
+  end,
+  __index = function(self, name)
+    return require("moonbuild." .. tostring(name))
+  end
+})
+end
+end
+
 end
 
 local loadfile
@@ -2505,6 +2684,7 @@ loadfile = require('moonscript.base').loadfile
 local Context = require('moonbuild.context')
 local Variable = require('moonbuild.core.Variable')
 local DepGraph = require('moonbuild.core.DAG')
+local Executor = require('moonbuild.core.executor')
 local parseargs
 parseargs = require('moonbuild._cmd.common').parseargs
 local sort, concat
@@ -2600,24 +2780,12 @@ local dag = DepGraph(ctx, targets)
 if args.verbose then
   print("Created dependancy graph")
 end
-if args.parallel == 1 then
-  local Executor = require('moonbuild.core.singleprocessexecutor')
-  local executor = Executor(dag, args.parallel)
-  executor:execute(args)
-else
-  local ok, Executor = pcall(function()
-    return require('moonbuild.core.multiprocessexecutor')
-  end)
-  if not (ok) then
-    Executor = require('moonbuild.core.singleprocessexecutor')
-  end
-  local nparallel = args.parallel == 'y' and Executor:getmaxparallel() or args.parallel
-  if args.verbose then
-    print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
-  end
-  local executor = Executor(dag, nparallel)
-  executor:execute(args)
+local nparallel = args.parallel == 'y' and Executor:getmaxparallel() or args.parallel
+if args.verbose then
+  print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
 end
+local executor = Executor(dag, nparallel)
+executor:execute(args)
 if args.verbose then
   return print("Finished")
 end

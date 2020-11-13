@@ -1,8 +1,8 @@
-import first, filter, foreach, flatten, patsubst from require 'moonbuild._common'
+import first, filter, foreach, flatten, patsubst, includes from require 'moonbuild._common'
 import runwithcontext from require 'moonbuild.compat.ctx'
 globalenv = require 'moonbuild.env.global'
 import exists, parent, mkdirs, clearentry, disableentry, attributes from require 'moonbuild._fs'
-import sort from table
+import sort, insert, remove from table
 import huge from math
 
 local DepNode, FileTarget
@@ -76,6 +76,20 @@ class DepGraph
 	buildablenodes: =>
 		[v for k, v in pairs @nodes when v\canbuild! and not v.built]
 
+	reset: =>
+		n.built = false for k, n in pairs @nodes
+
+	resetchildren: (names) =>
+		done = {}
+		stack = [v for v in *names]
+		while #stack != 0
+			name = remove stack
+			continue if done[name]
+			done[name] = true
+			node = @nodes[name]
+			node.built = false
+			insert stack, n for n in *(node\children!)
+
 class DepNode
 	new: (@dag, target, @name) =>
 		@priority = target.priority
@@ -117,6 +131,9 @@ class DepNode
 		@deps = flatten { deps, after }
 		@built = true if #@deps == 0 and #@buildfunctions == 0
 
+	children: =>
+		[k for k, n in pairs @dag.nodes when (includes n.ins, @name) or (includes n.after, @name)]
+
 	canbuild: =>
 		for node in *flatten { @ins, @after }
 			if not @dag.nodes[node].built
@@ -130,10 +147,11 @@ class DepNode
 		force = opts.force or false
 		quiet = opts.quiet or false
 
-		return if @built
-		return unless force or @shouldbuild!
-		print "#{@type == 'virtual' and "Running" or "Building"} #{@name}" unless quiet or #@buildfunctions == 0
+		return false if @built or #@buildfunctions == 0
+		return false unless force or @shouldbuild!
+		print "#{@type == 'virtual' and "Running" or "Building"} #{@name}" unless quiet
 		@actuallybuild!
+		true
 
 
 	shouldbuild: =>

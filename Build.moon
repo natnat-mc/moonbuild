@@ -17,9 +17,20 @@ with public default target 'all'
 	\after 'lib'
 
 with public target 'install'
+	\after 'install-bin'
+	\after 'install-lib'
+
+with public target 'install-bin'
 	\depends 'out/moonbuild'
 	\produces '/usr/local/bin/moonbuild'
 	\fn => _.cmd 'sudo', 'cp', @infile, @outfile
+	\sync!
+
+with public target 'install-lib'
+	\depends 'out/moonbuild.lua'
+	\produces "/usr/local/share/lua/#{LUA\gsub 'lua', ''}/moonbuild.lua"
+	\fn => _.cmd 'sudo', 'cp', @infile, @outfile
+	\sync!
 
 with public target 'clean'
 	\fn => _.cmd RM, LIB_LUA
@@ -44,6 +55,13 @@ with target BIN, pattern: 'out/%'
 		_.cmd AMALG, '-o', @outfile, '-s', @infile, MODULES
 		_.writefile @outfile, "#!/usr/bin/env #{LUA}\n#{_.readfile @outfile}"
 		_.cmd 'chmod', '+x', @outfile
+
+with target 'out/moonbuild.lua'
+	\depends 'moonbuild/init.lua'
+	\depends LIB_LUA
+	\produces '%'
+	\fn =>
+		_.cmd AMALG, '-o', @outfile, '-s', @infile, _.exclude MODULES, 'moonbuild.init'
 
 with target {LIB_LUA, BIN_LUA}, pattern: '%.lua'
 	\depends '%.moon'
