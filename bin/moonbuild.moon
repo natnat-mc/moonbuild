@@ -1,15 +1,13 @@
 -- load everything we need
 import loadfile from require 'moonscript.base'
-Context = require 'moonbuild.context'
-Variable = require 'moonbuild.core.Variable'
-DepGraph = require 'moonbuild.core.DAG'
-Executor = require 'moonbuild.core.executor'
-import parseargs from require 'moonbuild._cmd.common'
+import Context, DepGraph, Executor from require 'moonbuild'
+Variable = (require 'moonbuild')['core.Variable']
+import parseargs from (require 'moonbuild')['_cmd.common']
+argparse = require 'argparse'
 import sort, concat from table
 import exit from os
 
 -- parse the arguments
-argparse = require 'argparse'
 parser = with argparse "moonbuild", "A build system in moonscript"
 	\option '-b --buildfile', "Build file to use", 'Build.moon'
 	\option '-j --parallel', "Sets the number of parallel tasks, 'y' to run as many as we have cores", '1'

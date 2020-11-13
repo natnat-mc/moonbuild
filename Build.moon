@@ -48,12 +48,10 @@ with public target 'lib'
 
 with target BIN, pattern: 'out/%'
 	\depends 'bin/%.lua'
-	\depends LIB_LUA
 	\produces 'out/%'
 	\mkdirs!
 	\fn =>
-		_.cmd AMALG, '-o', @outfile, '-s', @infile, MODULES
-		_.writefile @outfile, "#!/usr/bin/env #{LUA}\n#{_.readfile @outfile}"
+		_.writefile @outfile, "#!/usr/bin/env #{LUA}\n#{_.readfile @infile}"
 		_.cmd 'chmod', '+x', @outfile
 
 with target 'out/moonbuild.lua'
