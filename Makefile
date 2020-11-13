@@ -16,27 +16,27 @@ MODULES = $(shell echo $(foreach lib, $(LIB_LUA), $(patsubst %.lua, %, $(lib))) 
 
 all: bin lib
 
-install: all
-	sudo cp out/moonbuild /usr/local/bin/moonbuild
-
 clean:
 	$(RM) $(LIB_LUA)
 	$(RM) $(BIN_LUA)
 
 mrproper: clean
-	$(RM) $(BIN)
+	$(RM) $(BIN) out/moonbuild.lua
 
 bin: $(BIN)
 
-lib: $(LIB_LUA)
+lib: $(LIB_LUA) out/moonbuild.lua
 
 out/%: bin/%.lua $(LIB_LUA)
 	@mkdir -p `dirname $@`
-	$(AMALG) -o $@.body -s $< $(MODULES)
 	@printf '#!/usr/bin/env %s\n' $(LUA) > $@.headline
-	@cat $@.headline $@.body > $@
-	@rm $@.headline $@.body
+	@cat $@.headline $< > $@
+	@rm $@.headline
 	chmod +x $@
+
+out/moonbuild.lua: moonbuild/init.lua $(LIB_LUA)
+	@mkdir -p `dirname $@`
+	$(AMALG) -o $@ -s $< $(MODULES)
 
 %.lua: %.moon
 	moonc $^

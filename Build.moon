@@ -9,6 +9,7 @@ var 'BIN_SRC', _.wildcard 'bin/*.moon'
 var 'LIB_LUA', _.patsubst LIB_SRC, '%.moon', '%.lua'
 var 'BIN_LUA', _.patsubst BIN_SRC, '%.moon', '%.lua'
 var 'BIN', _.patsubst BIN_LUA, 'bin/%.lua', 'out/%'
+var 'LIB', 'out/moonbuild.lua'
 
 var 'MODULES', _.foreach (_.patsubst LIB_LUA, '%.lua', '%'), => @gsub '/', '.'
 
@@ -21,13 +22,13 @@ with public target 'install'
 	\after 'install-lib'
 
 with public target 'install-bin'
-	\depends 'out/moonbuild'
-	\produces '/usr/local/bin/moonbuild'
+	\depends BIN
+	\produces _.patsubst BIN, 'out/%', '/usr/local/bin/%'
 	\fn => _.cmd 'sudo', 'cp', @infile, @outfile
 	\sync!
 
 with public target 'install-lib'
-	\depends 'out/moonbuild.lua'
+	\depends LIB
 	\produces "/usr/local/share/lua/#{LUA\gsub 'lua', ''}/moonbuild.lua"
 	\fn => _.cmd 'sudo', 'cp', @infile, @outfile
 	\sync!
@@ -38,13 +39,13 @@ with public target 'clean'
 
 with public target 'mrproper'
 	\after 'clean'
-	\fn => _.cmd RM, BIN
+	\fn => _.cmd RM, BIN, LIB
 
 with public target 'bin'
 	\depends BIN
 
 with public target 'lib'
-	\depends LIB_LUA
+	\depends LIB_LUA, LIB
 
 with target BIN, pattern: 'out/%'
 	\depends 'bin/%.lua'
@@ -54,12 +55,11 @@ with target BIN, pattern: 'out/%'
 		_.writefile @outfile, "#!/usr/bin/env #{LUA}\n#{_.readfile @infile}"
 		_.cmd 'chmod', '+x', @outfile
 
-with target 'out/moonbuild.lua'
+with target LIB
 	\depends 'moonbuild/init.lua'
 	\depends LIB_LUA
 	\produces '%'
-	\fn =>
-		_.cmd AMALG, '-o', @outfile, '-s', @infile, _.exclude MODULES, 'moonbuild.init'
+	\fn => _.cmd AMALG, '-o', @outfile, '-s', @infile, _.exclude MODULES, 'moonbuild.init'
 
 with target {LIB_LUA, BIN_LUA}, pattern: '%.lua'
 	\depends '%.moon'
