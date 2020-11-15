@@ -27,5 +27,10 @@ You can build moonbuild with itself: `moon bin/moonbuild.moon -qjy`.
 This will leave the binary ready to be used as `out/moonbuild` (it will still depend on the library to be used).  
 The binary and library can then be installed with `bin/moonbuild install`.
 
+You can combine these steps with `moon bin/moonbuild.moon -qjy install` which will build and install moonbuild.
+
+### With `Alfons`
+Alfons can use the devel version of moonbuild directly from its sources, so `alfons build` and `alfons install` will work directly.
+
 ## Docs
 TODO
