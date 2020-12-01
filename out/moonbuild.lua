@@ -1952,11 +1952,11 @@ do
       local ctx = setmetatable({ }, {
         __index = function(_, k)
           local _exp_0 = k
-          if 'infile' == _exp_0 then
+          if 'infile' == _exp_0 or 'in' == _exp_0 then
             return self.ins[1]
           elseif 'infiles' == _exp_0 then
             return self.ins
-          elseif 'outfile' == _exp_0 then
+          elseif 'outfile' == _exp_0 or 'out' == _exp_0 then
             return self.outs[1]
           elseif 'outfiles' == _exp_0 then
             return self.outs
@@ -2010,14 +2010,14 @@ do
         local ctx = setmetatable({ }, {
           __index = function(_, k)
             local _exp_0 = k
-            if 'infile' == _exp_0 then
+            if 'infile' == _exp_0 or 'in' == _exp_0 then
               local f = first(deps)
               return f and f.name
             elseif 'infiles' == _exp_0 then
               return foreach(deps, function(self)
                 return self.name
               end)
-            elseif 'outfile' == _exp_0 then
+            elseif 'outfile' == _exp_0 or 'out' == _exp_0 then
               local f = first(self.outs)
               return f and f.name
             elseif 'outfiles' == _exp_0 then

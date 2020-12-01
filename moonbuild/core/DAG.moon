@@ -108,12 +108,12 @@ class DepNode
 			ctx = setmetatable {},
 				__index: (_, k) ->
 					switch k
-						when 'infile'
+						when 'infile', 'in'
 							f = first deps
 							f and f.name
 						when 'infiles'
 							foreach deps, => @name
-						when 'outfile'
+						when 'outfile', 'out'
 							f = first @outs
 							f and f.name
 						when 'outfiles'
@@ -182,9 +182,9 @@ class DepNode
 		ctx = setmetatable {},
 			__index: (_, k) ->
 				switch k
-					when 'infile' then @ins[1]
+					when 'infile', 'in' then @ins[1]
 					when 'infiles' then @ins
-					when 'outfile' then @outs[1]
+					when 'outfile', 'out' then @outs[1]
 					when 'outfiles' then @outs
 					when 'name' then @name
 					else error "No such field in TargetContext: #{k}"
