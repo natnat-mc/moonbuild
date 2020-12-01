@@ -17,5 +17,11 @@ cmd.backend = backend
 cmd.parseargs = parseargs
 cmd.escape = escape
 
+-- derived cmd functions
+_cmd = cmd.cmd
+_cmdrst = cmd.cmdrst
+cmd.cmdline = (cmdline) -> _cmd parseargs cmdline
+cmd.cmdlinerst = (cmdline) -> _cmdrst parseargs cmdline
+
 -- the library itself
-setmetatable cmd, __call: => {'cmd', 'cmdrst', 'sh'}
+setmetatable cmd, __call: => {'cmd', 'cmdrst', 'cmdline', 'cmdlinerst', 'sh'}

@@ -69,11 +69,21 @@ end
 cmd.backend = backend
 cmd.parseargs = parseargs
 cmd.escape = escape
+local _cmd = cmd.cmd
+local _cmdrst = cmd.cmdrst
+cmd.cmdline = function(cmdline)
+  return _cmd(parseargs(cmdline))
+end
+cmd.cmdlinerst = function(cmdline)
+  return _cmdrst(parseargs(cmdline))
+end
 return setmetatable(cmd, {
   __call = function(self)
     return {
       'cmd',
       'cmdrst',
+      'cmdline',
+      'cmdlinerst',
       'sh'
     }
   end
