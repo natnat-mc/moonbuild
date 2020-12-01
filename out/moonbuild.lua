@@ -2227,7 +2227,23 @@ do
     __init = function(self, name, ...)
       self.name = name
       self.public = false
-      if (select('#', ...)) ~= 1 or (type(...)) == 'table' then
+      if (type(self.name)) == 'table' then
+        if not ((type(next(self.name))) == 'string') then
+          error("not a valid var table: " .. tostring(next(self.name)))
+        end
+        if next(self.name, (next(self.name))) then
+          error("more than one var at once: " .. tostring(next(self.name)) .. ", " .. tostring(next(self.name, (next(self.name)))))
+        end
+        name = next(self.name)
+        local param
+        self.name, param = name, self.name
+        local val = param[name]
+        if (select('#', ...)) ~= 0 or (type(val)) == 'table' then
+          self.value = flatten(val, ...)
+        else
+          self.value = val
+        end
+      elseif (select('#', ...)) ~= 1 or (type(...)) == 'table' then
         self.value = flatten(...)
       else
         self.value = ...
@@ -2545,7 +2561,7 @@ return function(ctx)
   rawset(env, 'var', function(name, ...)
     local var = Variable(name, ...)
     ctx:addvar(var)
-    rawset(varlayer, name, var.value)
+    rawset(varlayer, var.name, var.value)
     return var
   end)
   rawset(env, 'target', function(name, opts)

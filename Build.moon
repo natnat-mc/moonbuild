@@ -1,17 +1,17 @@
-public var 'MOONC', 'moonc'
-public var 'AMALG', 'amalg.lua'
-public var 'RM', 'rm', '-f', '--'
-public var 'LUA', 'lua5.3'
+public var MOONC: 'moonc'
+public var AMALG: 'amalg.lua'
+public var RM: 'rm', '-f', '--'
+public var LUA: 'lua5.3'
 
-var 'LIB_SRC', _.wildcard 'moonbuild/**.moon'
-var 'BIN_SRC', _.wildcard 'bin/*.moon'
+var LIB_SRC: _.wildcard 'moonbuild/**.moon'
+var BIN_SRC: _.wildcard 'bin/*.moon'
 
-var 'LIB_LUA', _.patsubst LIB_SRC, '%.moon', '%.lua'
-var 'BIN_LUA', _.patsubst BIN_SRC, '%.moon', '%.lua'
-var 'BIN', _.patsubst BIN_LUA, 'bin/%.lua', 'out/%'
-var 'LIB', 'out/moonbuild.lua'
+var LIB_LUA: _.patsubst LIB_SRC, '%.moon', '%.lua'
+var BIN_LUA: _.patsubst BIN_SRC, '%.moon', '%.lua'
+var BIN: _.patsubst BIN_LUA, 'bin/%.lua', 'out/%'
+var LIB: 'out/moonbuild.lua'
 
-var 'MODULES', _.foreach (_.patsubst LIB_LUA, '%.lua', '%'), => @gsub '/', '.'
+var MODULES: _.foreach (_.patsubst LIB_LUA, '%.lua', '%'), => @gsub '/', '.'
 
 with public default target 'all'
 	\after 'bin'

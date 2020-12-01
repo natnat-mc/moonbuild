@@ -21,7 +21,7 @@ import flatten from _
 	rawset env, 'var', (name, ...) ->
 		var = Variable name, ...
 		ctx\addvar var
-		rawset varlayer, name, var.value
+		rawset varlayer, var.name, var.value
 		var
 
 	rawset env, 'target', (name, opts) ->
