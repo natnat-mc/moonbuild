@@ -2109,6 +2109,123 @@ end
 
 do
 local _ENV = _ENV
+package.preload[ "moonbuild.core.Pipeline" ] = function( ... ) local arg = _G.arg;
+local Target = require('moonbuild.core.Target')
+local _ = require('moonbuild._')
+local flatten, patsubst
+flatten, patsubst = _.flatten, _.patsubst
+local Pipeline
+do
+  local _class_0
+  local _base_0 = {
+    sources = function(self, ...)
+      self.lastsources = flatten(self.lastsources, ...)
+    end,
+    source = function(self, src)
+      self.lastsources = flatten(self.lastsources, src)
+    end,
+    step = function(self, name, params)
+      local public = true
+      if (type(name)) == 'table' then
+        public, params = false, name
+      end
+      local tgttype
+      if params.pattern then
+        if not ((type(params.pattern)) == 'table' and (type(params.pattern[1])) == 'string' and (type(params.pattern[2])) == 'string') then
+          error("pattern must be a table with the same format as patsubst")
+        end
+        tgttype = 'pattern'
+      elseif params.output or params.out then
+        if not ((type(params.output or params.out)) == 'string') then
+          error("output must be a string")
+        end
+        tgttype = 'single'
+      else
+        tgttype = error("invalid step type for pipeline: must be pattern or single (out/output)")
+      end
+      local tgtouts
+      local _exp_0 = tgttype
+      if 'pattern' == _exp_0 then
+        tgtouts = patsubst(self.lastsources, params.pattern[1], params.pattern[2])
+      elseif 'single' == _exp_0 then
+        tgtouts = params.output or params.out
+      end
+      local tgtpatt
+      local _exp_1 = tgttype
+      if 'pattern' == _exp_1 then
+        tgtpatt = params.pattern[2]
+      elseif 'single' == _exp_1 then
+        tgtpatt = nil
+      end
+      local tgtins
+      local _exp_2 = tgttype
+      if 'pattern' == _exp_2 then
+        tgtins = params.pattern[1]
+      elseif 'single' == _exp_2 then
+        tgtins = self.lastsources
+      end
+      local tgtprod
+      local _exp_3 = tgttype
+      if 'pattern' == _exp_3 then
+        tgtprod = params.pattern[2]
+      elseif 'single' == _exp_3 then
+        tgtprod = '%'
+      end
+      local tgt
+      do
+        local _with_0 = Target(self.ctx, tgtouts, {
+          pattern = tgtpatt
+        })
+        _with_0:depends(tgtins)
+        _with_0:produces(tgtprod)
+        _with_0:fn(params.fn or error("pipeline steps need a fn"))
+        tgt = _with_0
+      end
+      if params.mkdirs then
+        tgt:mkdirs()
+      end
+      if params.sync then
+        tgt:sync()
+      end
+      self.ctx:addtarget(tgt)
+      if public then
+        self.ctx:addtarget((function()
+          do
+            local _with_0 = Target(self.ctx, name)
+            _with_0:depends(tgtouts)
+            _with_0.public = true
+            return _with_0
+          end
+        end)())
+      end
+      self.lastsources = tgtouts
+    end
+  }
+  _base_0.__index = _base_0
+  _class_0 = setmetatable({
+    __init = function(self, ctx)
+      self.ctx = ctx
+      self.lastsources = { }
+    end,
+    __base = _base_0,
+    __name = "Pipeline"
+  }, {
+    __index = _base_0,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  Pipeline = _class_0
+  return _class_0
+end
+end
+end
+
+do
+local _ENV = _ENV
 package.preload[ "moonbuild.core.Target" ] = function( ... ) local arg = _G.arg;
 local flatten, includes, patget
 do
@@ -2539,6 +2656,7 @@ local _ENV = _ENV
 package.preload[ "moonbuild.env.init" ] = function( ... ) local arg = _G.arg;
 local Target = require('moonbuild.core.Target')
 local Variable = require('moonbuild.core.Variable')
+local Pipeline = require('moonbuild.core.Pipeline')
 local _ = require('moonbuild._')
 local flatten
 flatten = _.flatten
@@ -2558,8 +2676,8 @@ return function(ctx)
   rawset(env, '_', _)
   rawset(env, '_G', env)
   rawset(env, '_ENV', env)
-  rawset(env, 'var', function(name, ...)
-    local var = Variable(name, ...)
+  rawset(env, 'var', function(...)
+    local var = Variable(...)
     ctx:addvar(var)
     rawset(varlayer, var.name, var.value)
     return var
@@ -2568,6 +2686,9 @@ return function(ctx)
     local target = Target(ctx, name, opts)
     ctx:addtarget(target)
     return target
+  end)
+  rawset(env, 'pipeline', function()
+    return Pipeline(ctx)
   end)
   return env, varlayer
 end

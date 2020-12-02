@@ -1,5 +1,6 @@
 Target = require 'moonbuild.core.Target'
 Variable = require 'moonbuild.core.Variable'
+Pipeline = require 'moonbuild.core.Pipeline'
 _ = require 'moonbuild._'
 import flatten from _
 
@@ -18,8 +19,8 @@ import flatten from _
 	rawset env, '_G', env
 	rawset env, '_ENV', env
 
-	rawset env, 'var', (name, ...) ->
-		var = Variable name, ...
+	rawset env, 'var', (...) ->
+		var = Variable ...
 		ctx\addvar var
 		rawset varlayer, var.name, var.value
 		var
@@ -28,5 +29,8 @@ import flatten from _
 		target = Target ctx, name, opts
 		ctx\addtarget target
 		target
+
+	rawset env, 'pipeline', ->
+		Pipeline ctx
 
 	env, varlayer

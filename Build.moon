@@ -1,4 +1,3 @@
-public var MOONC: 'moonc'
 public var AMALG: 'amalg.lua'
 public var RM: 'rm', '-f', '--'
 public var LUA: 'lua5.3'
@@ -41,27 +40,23 @@ with public target 'mrproper'
 	\after 'clean'
 	\fn => _.cmd RM, BIN, LIB
 
-with public target 'bin'
-	\depends BIN
+with pipeline! -- lib
+	\sources LIB_SRC
+	\step 'compile-lib'
+		pattern: {'%.moon', '%.lua'}
+		fn: => _.moonc @infile, @out
+	\step 'lib'
+		output: LIB
+		fn: => _.cmd AMALG, '-o', @out, '-s', 'moonbuild/init.lua', _.exclude MODULES, 'moonbuild.init'
 
-with public target 'lib'
-	\depends LIB_LUA, LIB
-
-with target BIN, pattern: 'out/%'
-	\depends 'bin/%.lua'
-	\produces 'out/%'
-	\mkdirs!
-	\fn =>
-		_.writefile @out, "#!/usr/bin/env #{LUA}\n#{_.readfile @infile}"
-		_.cmd 'chmod', '+x', @out
-
-with target LIB
-	\depends 'moonbuild/init.lua'
-	\depends LIB_LUA
-	\produces '%'
-	\fn => _.cmd AMALG, '-o', @out, '-s', @infile, _.exclude MODULES, 'moonbuild.init'
-
-with target {LIB_LUA, BIN_LUA}, pattern: '%.lua'
-	\depends '%.moon'
-	\produces '%.lua'
-	\fn => _.moonc @infile, @out
+with pipeline! -- bin
+	\sources BIN_SRC
+	\step 'compile-bin'
+		pattern: {'%.moon', '%.lua'}
+		fn: => _.moonc @infile, @out
+	\step 'bin'
+		pattern: {'bin/%.lua', 'out/%'}
+		mkdirs: true
+		fn: =>
+			_.writefile @out, "#!/usr/bin/env #{LUA}\n#{_.readfile @infile}"
+			_.cmd 'chmod', '+x', @out
