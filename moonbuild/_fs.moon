@@ -166,10 +166,16 @@ mkdir = (dir) ->
 	clearentry parent dir
 
 mkdirs = (dir) ->
-	return if isdir dir
-	error "Can't mkdirs #{dir}: file exists" if exists dir
+	if attr = attributes normalizepath dir
+		return if attr.mode == 'directory'
+		error "Can't mkdirs #{dir}: file exists"
 	mkdirs parent dir
-	mkdir dir
+	unless pcall -> actualmkdir dir
+		clearentry parent dir
+		clearentry dir
+		error "Failed to mkdirs #{dir}: last mkdir failed" unless isdir dir
+	clearentry parent dir
+	clearentry dir
 
 -- from the backend
 fs = {k, withcache fn for k, fn in pairs fs}

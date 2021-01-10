@@ -973,14 +973,27 @@ mkdir = function(dir)
 end
 local mkdirs
 mkdirs = function(dir)
-  if isdir(dir) then
-    return 
-  end
-  if exists(dir) then
-    error("Can't mkdirs " .. tostring(dir) .. ": file exists")
+  do
+    local attr = attributes(normalizepath(dir))
+    if attr then
+      if attr.mode == 'directory' then
+        return 
+      end
+      error("Can't mkdirs " .. tostring(dir) .. ": file exists")
+    end
   end
   mkdirs(parent(dir))
-  return mkdir(dir)
+  if not (pcall(function()
+    return actualmkdir(dir)
+  end)) then
+    clearentry(parent(dir))
+    clearentry(dir)
+    if not (isdir(dir)) then
+      error("Failed to mkdirs " .. tostring(dir) .. ": last mkdir failed")
+    end
+  end
+  clearentry(parent(dir))
+  return clearentry(dir)
 end
 do
   local _tbl_0 = { }
