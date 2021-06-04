@@ -1,0 +1,3 @@
+*.lua linguist-generated
+out/* linguist-generated
+Makefile -linguist-detectable
