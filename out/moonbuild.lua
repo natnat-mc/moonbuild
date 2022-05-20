@@ -36,11 +36,13 @@ end
 do
 local _ENV = _ENV
 package.preload[ "moonbuild._cmd" ] = function( ... ) local arg = _G.arg;
-local parseargs, escape
+local parseargs, escape, cmdline
 do
   local _obj_0 = require('moonbuild._cmd.common')
-  parseargs, escape = _obj_0.parseargs, _obj_0.escape
+  parseargs, escape, cmdline = _obj_0.parseargs, _obj_0.escape, _obj_0.cmdline
 end
+local verbose
+verbose = require('moonbuild._common').verbose
 local ok, cmd, backend = false, nil, nil
 if not (ok) then
   ok, cmd = pcall(function()
@@ -67,6 +69,28 @@ end
 cmd.backend = backend
 cmd.parseargs = parseargs
 cmd.escape = escape
+local _list_0 = ({
+  'cmd',
+  'cmdrst'
+})
+for _index_0 = 1, #_list_0 do
+  local f = _list_0[_index_0]
+  local orig = cmd[f]
+  cmd[f] = function(...)
+    local cli = cmdline(...)
+    verbose(function()
+      return print("[" .. tostring(f) .. "] " .. tostring(cli))
+    end)
+    return orig(...)
+  end
+end
+local _sh = cmd.sh
+cmd.sh = function(cli)
+  verbose(function()
+    return print("[sh] " .. tostring(cli))
+  end)
+  return _sh(cli)
+end
 local _cmd = cmd.cmd
 local _cmdrst = cmd.cmdrst
 cmd.cmdline = function(cmdline)
@@ -99,6 +123,8 @@ do
 end
 local concat
 concat = table.concat
+local flatten
+flatten = require('moonbuild._common').flatten
 local specialchars = {
   ['\"'] = '\\\"',
   ['\\'] = '\\\\',
@@ -230,26 +256,6 @@ parseargs = function(argstr)
   end
   return args
 end
-return {
-  escape = escape,
-  parseargs = parseargs
-}
-end
-end
-
-do
-local _ENV = _ENV
-package.preload[ "moonbuild._cmd.lua" ] = function( ... ) local arg = _G.arg;
-local escape
-escape = require('moonbuild._cmd.common').escape
-local flatten
-flatten = require('moonbuild._common').flatten
-local execute
-execute = require('moonbuild.compat.execute').execute
-local popen
-popen = io.popen
-local concat
-concat = table.concat
 local cmdline
 cmdline = function(...)
   return concat((function(...)
@@ -264,6 +270,27 @@ cmdline = function(...)
     return _accum_0
   end)(...), ' ')
 end
+return {
+  escape = escape,
+  parseargs = parseargs,
+  cmdline = cmdline
+}
+end
+end
+
+do
+local _ENV = _ENV
+package.preload[ "moonbuild._cmd.lua" ] = function( ... ) local arg = _G.arg;
+local cmdline
+cmdline = require('moonbuild._cmd.common').cmdline
+local flatten
+flatten = require('moonbuild._common').flatten
+local execute
+execute = require('moonbuild.compat.execute').execute
+local popen
+popen = io.popen
+local concat
+concat = table.concat
 local cmd
 cmd = function(...)
   local ok, ret, code = execute(cmdline(...))
@@ -283,6 +310,9 @@ cmdrst = function(...)
 end
 local sh
 sh = function(cli)
+  verbose(function()
+    return print('[sh] ' .. cli)
+  end)
   local ok, ret, code = execute(cli)
   if not (ok) then
     return error("command '" .. tostring(cli) .. "' exited with " .. tostring(code) .. " (" .. tostring(ret) .. ")")
@@ -354,6 +384,9 @@ cmdrst = function(...)
 end
 local sh
 sh = function(cli)
+  verbose(function()
+    return print('[sh] ' .. cli)
+  end)
   return cmd('sh', '-c', cli)
 end
 return {
@@ -635,6 +668,21 @@ minmax = function(list)
   end
   return m, M
 end
+local _verbose = false
+local verbose
+verbose = function(arg)
+  if arg == nil then
+    return _verbose
+  elseif (type(arg)) == 'function' then
+    if _verbose then
+      return arg()
+    end
+  elseif (type(arg)) == 'boolean' then
+    _verbose = arg
+  else
+    return error("_.verbose takes either no argument, a boolean or a function")
+  end
+end
 common.flatten = flatten
 common.first = first
 common.foreach = foreach
@@ -647,6 +695,7 @@ common.exclude = exclude
 common.min = min
 common.max = max
 common.minmax = minmax
+common.verbose = verbose
 return setmetatable(common, {
   __call = function(self)
     local _accum_0 = { }
@@ -1260,6 +1309,8 @@ do
   local _obj_0 = require('moonbuild._cmd')
   parseargs, cmdrst = _obj_0.parseargs, _obj_0.cmdrst
 end
+local verbose
+verbose = require('moonbuild._common').verbose
 local gmatch, match, gsub
 do
   local _obj_0 = string
@@ -1331,6 +1382,9 @@ writefile = function(filename, data)
 end
 local moonc
 moonc = function(infile, outfile)
+  verbose(function()
+    return print("[moonc] " .. tostring(infile) .. " " .. tostring(outfile))
+  end)
   local code, err = to_lua(readfile(infile))
   if not (code) then
     error("Failed to compile " .. tostring(self.infile) .. ": " .. tostring(err))
@@ -2830,29 +2884,31 @@ moonbuild = function(...)
   opts.force = force
   local verbose = opts.verbose or opts.v or false
   opts.verbose = verbose
+  _.verbose(verbose)
   local ctx = Context()
   ctx:load((loadfile(buildfile)), opts)
-  if verbose then
-    print("Loaded buildfile")
-  end
+  _.verbose(function()
+    return print("Loaded buildfile")
+  end)
   ctx:init()
-  if verbose then
-    print("Initialized buildfile")
-  end
+  _.verbose(function()
+    return print("Initialized buildfile")
+  end)
   local targets = #opts == 0 and ctx.defaulttargets or opts
   local dag = DepGraph(ctx, targets)
-  if verbose then
-    print("Created dependancy graph")
-  end
+  _.verbose(function()
+    return print("Created dependancy graph")
+  end)
   local nparallel = parallel == true and Executor:getmaxparallel() or parallel
-  if verbose then
-    print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
-  end
+  _.verbose(function()
+    return print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
+  end)
   local executor = Executor(dag, nparallel)
   executor:execute(opts)
-  if verbose then
+  _.verbose(function()
     return print("Finished")
-  end
+  end)
+  return print(_.verbose())
 end
 local table = {
   moonbuild = moonbuild,

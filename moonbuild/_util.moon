@@ -1,5 +1,6 @@
 import to_lua from require 'moonscript.base'
 import parseargs, cmdrst from require 'moonbuild._cmd'
+import verbose from require 'moonbuild._common'
 import gmatch, match, gsub from string
 import open from io
 
@@ -34,6 +35,7 @@ writefile = (filename, data) ->
 	nil
 
 moonc = (infile, outfile) ->
+	verbose -> print "[moonc] #{infile} #{outfile}"
 	code, err = to_lua readfile infile
 	error "Failed to compile #{@infile}: #{err}" unless code
 	writefile outfile, code

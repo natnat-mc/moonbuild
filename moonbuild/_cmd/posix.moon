@@ -37,6 +37,7 @@ cmdrst = (...) ->
 	data
 
 sh = (cli) ->
+	verbose -> print '[sh] ' .. cli
 	cmd 'sh', '-c', cli
 
 {

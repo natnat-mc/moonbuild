@@ -1,5 +1,6 @@
 import gsub, sub, match from string
 import concat from table
+import flatten from require 'moonbuild._common'
 
 specialchars =
 	'\"': '\\\"'
@@ -115,7 +116,11 @@ parseargs = (argstr) ->
 
 	args
 
+cmdline = (...) ->
+	concat [escape arg for arg in *flatten ...], ' '
+
 {
 	:escape
 	:parseargs
+	:cmdline
 }

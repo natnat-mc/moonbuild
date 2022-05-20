@@ -1,4 +1,5 @@
-import parseargs, escape from require 'moonbuild._cmd.common'
+import parseargs, escape, cmdline from require 'moonbuild._cmd.common'
+import verbose from require 'moonbuild._common'
 
 ok, cmd, backend = false, nil, nil
 unless ok
@@ -16,6 +17,18 @@ cmd.backend = backend
 -- common cmd function
 cmd.parseargs = parseargs
 cmd.escape = escape
+
+-- make verbose verisons of _.cmd, _.cmdrst and _.sh
+for f in *({'cmd', 'cmdrst'})
+	orig = cmd[f]
+	cmd[f] = (...) ->
+		cli = cmdline ...
+		verbose -> print "[#{f}] #{cli}"
+		orig ...
+_sh = cmd.sh
+cmd.sh = (cli) ->
+	verbose -> print "[sh] #{cli}"
+	_sh cli
 
 -- derived cmd functions
 _cmd = cmd.cmd

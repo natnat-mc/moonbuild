@@ -33,22 +33,27 @@ moonbuild = (...) ->
 	verbose = opts.verbose or opts.v or false
 	opts.verbose = verbose
 
+	-- set verbosity level
+	_.verbose verbose
+
 	-- create context and DAG
 	ctx = Context!
 	ctx\load (loadfile buildfile), opts
-	print "Loaded buildfile" if verbose
+	_.verbose -> print "Loaded buildfile"
 	ctx\init!
-	print "Initialized buildfile" if verbose
+	_.verbose -> print "Initialized buildfile"
 	targets = #opts==0 and ctx.defaulttargets or opts
 	dag = DepGraph ctx, targets
-	print "Created dependancy graph" if verbose
+	_.verbose -> print "Created dependancy graph"
 
 	-- and build
 	nparallel = parallel == true and Executor\getmaxparallel! or parallel
-	print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}" if verbose
+	_.verbose -> print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}"
 	executor = Executor dag, nparallel
 	executor\execute opts
-	print "Finished" if verbose
+	_.verbose -> print "Finished"
+
+	print _.verbose!
 
 table = {
 	:moonbuild, :_

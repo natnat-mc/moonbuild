@@ -1,11 +1,8 @@
-import escape from require 'moonbuild._cmd.common'
+import cmdline from require 'moonbuild._cmd.common'
 import flatten from require 'moonbuild._common'
 import execute from require 'moonbuild.compat.execute'
 import popen from io
 import concat from table
-
-cmdline = (...) ->
-	concat [escape arg for arg in *flatten ...], ' '
 
 cmd = (...) ->
 	ok, ret, code = execute cmdline ...
@@ -19,6 +16,7 @@ cmdrst = (...) ->
 	data
 
 sh = (cli) ->
+	verbose -> print '[sh] ' .. cli
 	ok, ret, code = execute cli
 	error "command '#{cli}' exited with #{code} (#{ret})" unless ok
 

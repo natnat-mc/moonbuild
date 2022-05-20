@@ -147,6 +147,17 @@ minmax = (list) ->
 		M = e if e>M
 	m, M
 
+_verbose = false
+verbose = (arg) ->
+	if arg == nil
+		_verbose
+	elseif (type arg) == 'function'
+		arg! if _verbose
+	elseif (type arg) == 'boolean'
+		_verbose = arg
+	else
+		error "_.verbose takes either no argument, a boolean or a function"
+
 common.flatten = flatten
 common.first = first
 common.foreach = foreach
@@ -159,5 +170,6 @@ common.exclude = exclude
 common.min = min
 common.max = max
 common.minmax = minmax
+common.verbose = verbose
 
 setmetatable common, __call: => [k for k in pairs common]
