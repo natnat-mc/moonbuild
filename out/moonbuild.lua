@@ -1,6 +1,4 @@
 do
-
-do
 local _ENV = _ENV
 package.preload[ "moonbuild._" ] = function( ... ) local arg = _G.arg;
 local gmatch, match, gsub
@@ -1750,7 +1748,7 @@ do
       if self.nodes[name] then
         return 
       end
-      local elected = self:resolvedeps(name)
+      local elected = self:topresolvedeps(name)
       self.nodes[name] = elected
       local _list_0 = (transclosure(elected, 'deps'))
       for _index_0 = 1, #_list_0 do
@@ -1760,10 +1758,42 @@ do
       end
       elected.deps = nil
     end,
-    resolvedeps = function(self, name)
+    topresolvedeps = function(self, name)
+      local errors = { }
+      local ok, rst = pcall(function()
+        return self:resolvedeps(name, nil, errors)
+      end)
+      if ok then
+        return rst
+      else
+        local msg = {
+          "Failed to resolve target \'" .. tostring(name) .. "\'\n"
+        }
+        for _index_0 = 1, #errors do
+          local e = errors[_index_0]
+          if e.err:match('^moonbuild') then
+            e.err = e.err:match(': (.+)$')
+          end
+        end
+        for i = #errors, 1, -1 do
+          local e = errors[i]
+          insert(msg, tostring(string.rep('| ', e.level - 1)) .. "+-[" .. tostring(e.name) .. "] level " .. tostring(e.level) .. ": " .. tostring(e.err))
+        end
+        insert(msg, '')
+        return error(table.concat(msg, '\n'))
+      end
+    end,
+    resolvedeps = function(self, name, level, errors)
+      if level == nil then
+        level = 1
+      end
+      if errors == nil then
+        errors = { }
+      end
       do
         local node = self.nodes[name]
         if node then
+          print("deps(" .. tostring(name) .. ") = " .. tostring(node.name or '[noname]'))
           return node, { }
         end
       end
@@ -1777,7 +1807,7 @@ do
         return {
           a = {
             pcall(function()
-              return DepNode(self, candidate, name)
+              return DepNode(self, candidate, name, level, errors)
             end)
           }
         }
@@ -1788,7 +1818,16 @@ do
         return node.a[2]
       end)
       sort(resolved, nodepriority)
-      return resolved[1] or error("Cannot resolve target " .. tostring(name) .. ": " .. tostring(#candidates) .. " candidates, " .. tostring(#resolved) .. " resolved")
+      if not (resolved[1]) then
+        local err = "Cannot resolve target " .. tostring(name) .. ": " .. tostring(#candidates) .. " candidates, " .. tostring(#resolved) .. " resolved"
+        table.insert(errors, {
+          name = name,
+          level = level,
+          err = err
+        })
+        error(err)
+      end
+      return resolved[1]
     end,
     buildablenodes = function(self)
       local _accum_0 = { }
@@ -1917,7 +1956,7 @@ do
         return false
       end
       if not (quiet) then
-        print(tostring(self.type == 'virtual' and "Running" or "Building") .. " " .. tostring(self.name))
+        print(tostring(self.type == 'virtual' and "Running" or "Building") .. " " .. tostring(self.name) .. " [level " .. tostring(self.level) .. "]")
       end
       self:actuallybuild()
       return true
@@ -1999,8 +2038,8 @@ do
   }
   _base_0.__index = _base_0
   _class_0 = setmetatable({
-    __init = function(self, dag, target, name)
-      self.dag, self.name = dag, name
+    __init = function(self, dag, target, name, level, errors)
+      self.dag, self.name, self.level = dag, name, level
       self.priority = target.priority
       self.buildfunctions = target.buildfunctions
       self.mkdirs = target._mkdirs
@@ -2015,7 +2054,7 @@ do
       self.built = false
       local resolve
       resolve = function(name)
-        return self.dag:resolvedeps(patsubst(self.name, target.pattern, name))
+        return self.dag:resolvedeps((patsubst(self.name, target.pattern, name)), level + 1, errors)
       end
       local after = flatten(foreach(target.needtargets, resolve))
       local deps = flatten(foreach(target.infiles, resolve))
@@ -2748,8 +2787,6 @@ return function(ctx, overrides)
   return env, varlayer
 end
 end
-end
-
 end
 
 local loadfile

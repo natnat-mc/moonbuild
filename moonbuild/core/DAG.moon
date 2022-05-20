@@ -56,22 +56,44 @@ class DepGraph
 
 	addnode: (name) =>
 		return if @nodes[name]
-		elected = @resolvedeps name
+		elected = @topresolvedeps name
 		@nodes[name] = elected
 		for dep in *(transclosure elected, 'deps')
 			@nodes[dep.name] = dep
 			dep.deps = nil
 		elected.deps = nil
 
-	resolvedeps: (name) =>
+	topresolvedeps: (name) =>
+		errors = {}
+		ok, rst = pcall -> @resolvedeps name, nil, errors
+		if ok
+			rst
+		else
+			msg = {"Failed to resolve target \'#{name}\'\n"}
+			for e in *errors
+				if e.err\match '^moonbuild'
+					e.err = e.err\match ': (.+)$'
+			for i=#errors, 1, -1
+				e = errors[i]
+				insert msg, "#{string.rep '| ', e.level - 1}+-[#{e.name}] level #{e.level}: #{e.err}"
+			insert msg, ''
+			error table.concat msg, '\n'
+
+	resolvedeps: (name, level=1, errors={}) =>
 		do
 			node = @nodes[name]
-			return node, {} if node
+			if node
+				print "deps(#{name}) = #{node.name or '[noname]'}"
+				return node, {}
 		candidates = filter {@ctx.targets, FileTarget!}, (target) -> target\matches name
-		nodes = foreach candidates, (candidate) -> a: {pcall -> DepNode @, candidate, name}
+		nodes = foreach candidates, (candidate) -> a: {pcall -> DepNode @, candidate, name, level, errors}
 		resolved = foreach (filter nodes, (node) -> node.a[1]), (node) -> node.a[2]
 		sort resolved, nodepriority
-		resolved[1] or error "Cannot resolve target #{name}: #{#candidates} candidates, #{#resolved} resolved"
+		unless resolved[1]
+			err = "Cannot resolve target #{name}: #{#candidates} candidates, #{#resolved} resolved"
+			table.insert errors, {:name, :level, :err}
+			error err
+		resolved[1]
 
 	buildablenodes: =>
 		[v for k, v in pairs @nodes when v\canbuild! and not v.built]
@@ -91,7 +113,7 @@ class DepGraph
 			insert stack, n for n in *(node\children!)
 
 class DepNode
-	new: (@dag, target, @name) =>
+	new: (@dag, target, @name, @level, errors) =>
 		@priority = target.priority
 		@buildfunctions = target.buildfunctions
 		@mkdirs = target._mkdirs
@@ -101,7 +123,7 @@ class DepNode
 		@type = 'virtual' if #@outs == 0
 		@built = false
 
-		resolve = (name) -> @dag\resolvedeps patsubst @name, target.pattern, name
+		resolve = (name) -> @dag\resolvedeps (patsubst @name, target.pattern, name), level + 1, errors
 		after = flatten foreach target.needtargets, resolve
 		deps = flatten foreach target.infiles, resolve
 		if #target.depfunctions!=0
@@ -149,7 +171,7 @@ class DepNode
 
 		return false if @built or #@buildfunctions == 0
 		return false unless force or @shouldbuild!
-		print "#{@type == 'virtual' and "Running" or "Building"} #{@name}" unless quiet
+		print "#{@type == 'virtual' and "Running" or "Building"} #{@name} [level #{@level}]" unless quiet
 		@actuallybuild!
 		true
 
