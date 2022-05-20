@@ -1,8 +1,9 @@
 -- load everything we need
 import loadfile from require 'moonscript.base'
 import Context, DepGraph, Executor from require 'moonbuild'
-Variable = (require 'moonbuild')['core.Variable']
-import parseargs from (require 'moonbuild')['_cmd.common']
+Variable = require 'moonbuild.core.Variable'
+import verbose from require 'moonbuild._common'
+import parseargs from require 'moonbuild._cmd.common'
 argparse = require 'argparse'
 import sort, concat from table
 import exit from os
@@ -34,12 +35,13 @@ for set in *args.set_list
 
 args.parallel = args.parallel == 'y' and 'y' or ((tonumber args.parallel) or error "Invalid argument for -j: #{args.parallel}")
 error "Invalid argument for -j: #{args.parallel}" if args.parallel != 'y' and (args.parallel<1 or args.parallel%1 != 0)
-print "Parsed CLI args" if args.verbose
+verbose args.verbose or false
+verbose "Parsed CLI args"
 
 -- load the buildfile
 ctx = Context!
 ctx\load (loadfile args.buildfile), overrides
-print "Loaded buildfile" if args.verbose
+verbose "Loaded buildfile"
 
 -- handle -l and -V
 if args.list
@@ -65,16 +67,16 @@ if args.list_variables
 
 -- initialize the buildfile further
 ctx\init!
-print "Initialized buildfile" if args.verbose
+verbose "Initialized buildfile"
 
 -- create the DAG
 targets = #args.targets==0 and ctx.defaulttargets or args.targets
 dag = DepGraph ctx, targets
-print "Created dependancy graph" if args.verbose
+verbose print "Created dependancy graph"
 
 -- execute the build
 nparallel = args.parallel == 'y' and Executor\getmaxparallel! or args.parallel
-print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}" if args.verbose
+verbose "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}"
 executor = Executor dag, nparallel
 executor\execute args
-print "Finished" if args.verbose
+verbose "Finished"

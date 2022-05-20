@@ -155,8 +155,10 @@ verbose = (arg) ->
 		arg! if _verbose
 	elseif (type arg) == 'boolean'
 		_verbose = arg
+	elseif (type arg) == 'string'
+		print arg if _verbose
 	else
-		error "_.verbose takes either no argument, a boolean or a function"
+		error "_.verbose takes either no argument, a boolean, a function or a string"
 
 common.flatten = flatten
 common.first = first

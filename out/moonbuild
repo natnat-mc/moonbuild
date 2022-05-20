@@ -6,9 +6,11 @@ do
   local _obj_0 = require('moonbuild')
   Context, DepGraph, Executor = _obj_0.Context, _obj_0.DepGraph, _obj_0.Executor
 end
-local Variable = (require('moonbuild'))['core.Variable']
+local Variable = require('moonbuild.core.Variable')
+local verbose
+verbose = require('moonbuild._common').verbose
 local parseargs
-parseargs = (require('moonbuild'))['_cmd.common'].parseargs
+parseargs = require('moonbuild._cmd.common').parseargs
 local argparse = require('argparse')
 local sort, concat
 do
@@ -55,14 +57,11 @@ args.parallel = args.parallel == 'y' and 'y' or ((tonumber(args.parallel)) or er
 if args.parallel ~= 'y' and (args.parallel < 1 or args.parallel % 1 ~= 0) then
   error("Invalid argument for -j: " .. tostring(args.parallel))
 end
-if args.verbose then
-  print("Parsed CLI args")
-end
+verbose(args.verbose or false)
+verbose("Parsed CLI args")
 local ctx = Context()
 ctx:load((loadfile(args.buildfile)), overrides)
-if args.verbose then
-  print("Loaded buildfile")
-end
+verbose("Loaded buildfile")
 if args.list then
   print("Public targets")
   local targets, n = { }, 1
@@ -94,20 +93,12 @@ if args.list_variables then
   exit(0)
 end
 ctx:init()
-if args.verbose then
-  print("Initialized buildfile")
-end
+verbose("Initialized buildfile")
 local targets = #args.targets == 0 and ctx.defaulttargets or args.targets
 local dag = DepGraph(ctx, targets)
-if args.verbose then
-  print("Created dependancy graph")
-end
+verbose(print("Created dependancy graph"))
 local nparallel = args.parallel == 'y' and Executor:getmaxparallel() or args.parallel
-if args.verbose then
-  print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
-end
+verbose("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
 local executor = Executor(dag, nparallel)
 executor:execute(args)
-if args.verbose then
-  return print("Finished")
-end
+return verbose("Finished")

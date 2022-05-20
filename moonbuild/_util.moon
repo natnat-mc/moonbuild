@@ -35,7 +35,7 @@ writefile = (filename, data) ->
 	nil
 
 moonc = (infile, outfile) ->
-	verbose -> print "[moonc] #{infile} #{outfile}"
+	verbose "[moonc] #{infile} #{outfile}"
 	code, err = to_lua readfile infile
 	error "Failed to compile #{@infile}: #{err}" unless code
 	writefile outfile, code

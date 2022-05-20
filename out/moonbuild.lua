@@ -77,18 +77,13 @@ for _index_0 = 1, #_list_0 do
   local f = _list_0[_index_0]
   local orig = cmd[f]
   cmd[f] = function(...)
-    local cli = cmdline(...)
-    verbose(function()
-      return print("[" .. tostring(f) .. "] " .. tostring(cli))
-    end)
+    verbose("[" .. tostring(f) .. "] " .. tostring(cmdline(...)))
     return orig(...)
   end
 end
 local _sh = cmd.sh
 cmd.sh = function(cli)
-  verbose(function()
-    return print("[sh] " .. tostring(cli))
-  end)
+  verbose("[sh] " .. tostring(cli))
   return _sh(cli)
 end
 local _cmd = cmd.cmd
@@ -679,8 +674,12 @@ verbose = function(arg)
     end
   elseif (type(arg)) == 'boolean' then
     _verbose = arg
+  elseif (type(arg)) == 'string' then
+    if _verbose then
+      return print(arg)
+    end
   else
-    return error("_.verbose takes either no argument, a boolean or a function")
+    return error("_.verbose takes either no argument, a boolean, a function or a string")
   end
 end
 common.flatten = flatten
@@ -1382,9 +1381,7 @@ writefile = function(filename, data)
 end
 local moonc
 moonc = function(infile, outfile)
-  verbose(function()
-    return print("[moonc] " .. tostring(infile) .. " " .. tostring(outfile))
-  end)
+  verbose("[moonc] " .. tostring(infile) .. " " .. tostring(outfile))
   local code, err = to_lua(readfile(infile))
   if not (code) then
     error("Failed to compile " .. tostring(self.infile) .. ": " .. tostring(err))
@@ -2887,28 +2884,17 @@ moonbuild = function(...)
   _.verbose(verbose)
   local ctx = Context()
   ctx:load((loadfile(buildfile)), opts)
-  _.verbose(function()
-    return print("Loaded buildfile")
-  end)
+  _.verbose("Loaded buildfile")
   ctx:init()
-  _.verbose(function()
-    return print("Initialized buildfile")
-  end)
+  _.verbose("Initialized buildfile")
   local targets = #opts == 0 and ctx.defaulttargets or opts
   local dag = DepGraph(ctx, targets)
-  _.verbose(function()
-    return print("Created dependancy graph")
-  end)
+  _.verbose("Created dependancy graph")
   local nparallel = parallel == true and Executor:getmaxparallel() or parallel
-  _.verbose(function()
-    return print("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
-  end)
+  _.verbose("Building with " .. tostring(nparallel) .. " max parallel process" .. tostring(nparallel > 1 and "es" or ""))
   local executor = Executor(dag, nparallel)
   executor:execute(opts)
-  _.verbose(function()
-    return print("Finished")
-  end)
-  return print(_.verbose())
+  return _.verbose("Finished")
 end
 local table = {
   moonbuild = moonbuild,

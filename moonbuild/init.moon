@@ -39,21 +39,19 @@ moonbuild = (...) ->
 	-- create context and DAG
 	ctx = Context!
 	ctx\load (loadfile buildfile), opts
-	_.verbose -> print "Loaded buildfile"
+	_.verbose "Loaded buildfile"
 	ctx\init!
-	_.verbose -> print "Initialized buildfile"
+	_.verbose "Initialized buildfile"
 	targets = #opts==0 and ctx.defaulttargets or opts
 	dag = DepGraph ctx, targets
-	_.verbose -> print "Created dependancy graph"
+	_.verbose "Created dependancy graph"
 
 	-- and build
 	nparallel = parallel == true and Executor\getmaxparallel! or parallel
-	_.verbose -> print "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}"
+	_.verbose "Building with #{nparallel} max parallel process#{nparallel>1 and "es" or ""}"
 	executor = Executor dag, nparallel
 	executor\execute opts
-	_.verbose -> print "Finished"
-
-	print _.verbose!
+	_.verbose "Finished"
 
 table = {
 	:moonbuild, :_

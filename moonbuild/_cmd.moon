@@ -22,12 +22,11 @@ cmd.escape = escape
 for f in *({'cmd', 'cmdrst'})
 	orig = cmd[f]
 	cmd[f] = (...) ->
-		cli = cmdline ...
-		verbose -> print "[#{f}] #{cli}"
+		verbose "[#{f}] #{cmdline ...}"
 		orig ...
 _sh = cmd.sh
 cmd.sh = (cli) ->
-	verbose -> print "[sh] #{cli}"
+	verbose "[sh] #{cli}"
 	_sh cli
 
 -- derived cmd functions
