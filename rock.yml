@@ -1,6 +1,6 @@
 package: moonbuild
 source:
-    url: git://github.com/natnat-mc/moonbuild
+    url: git+http://github.com/natnat-mc/moonbuild
 description:
     summary: Small build system in between make and a build.sh
     detailed: >
